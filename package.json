@@ -1,0 +1,34 @@
+{
+  "name": "wingstar",
+  "version": "1.0.0",
+  "description": "WingStar Web Builder - A premium WYSIWYG and Code web builder",
+  "main": "dist/main/main.js",
+  "scripts": {
+    "dev:main": "tsc -w",
+    "dev:renderer": "vite",
+    "dev": "node dev.js",
+    "dev:electron": "electron . --dev",
+    "build:main": "tsc",
+    "build:renderer": "vite build",
+    "build": "npm run build:main && npm run build:renderer"
+  },
+  "keywords": [
+    "electron",
+    "wysiwyg",
+    "web-builder",
+    "typescript",
+    "dreamweaver"
+  ],
+  "author": "WingStar Team",
+  "license": "MIT",
+  "dependencies": {
+    "canvas-confetti": "^1.9.3"
+  },
+  "devDependencies": {
+    "@types/canvas-confetti": "^1.6.4",
+    "@types/node": "^20.11.24",
+    "electron": "^29.1.0",
+    "typescript": "^5.3.3",
+    "vite": "^5.1.4"
+  }
+}
