@@ -142,6 +142,23 @@
         </div>
       </aside>
 
+      <!-- Split Code Editor Panel (Side-by-Side split) -->
+      <div class="code-editor-panel" id="code-editor-panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+            Raw HTML Editor
+          </div>
+          <div class="panel-actions">
+            <button id="btn-format-code" class="action-btn-sm" title="Reformat HTML Code">Format Code</button>
+            <span class="status-msg" id="code-sync-status">Synced</span>
+          </div>
+        </div>
+        <div class="editor-container" id="monaco-editor-container">
+          <!-- Monaco editor goes here -->
+        </div>
+      </div>
+
       <!-- Center Workspace (Visual WYSIWYG Canvas) -->
       <main class="workspace-root">
         <!-- Ruler Bar Corners -->
@@ -305,23 +322,6 @@
           </div>
         </div>
       </aside>
-    </div>
-
-    <!-- Bottom Code Panel (Split Raw Editor) -->
-    <div class="code-editor-panel" id="code-editor-panel">
-      <div class="panel-header">
-        <div class="panel-title">
-          <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
-          Raw HTML Editor
-        </div>
-        <div class="panel-actions">
-          <button id="btn-format-code" class="action-btn-sm" title="Reformat HTML Code">Format Code</button>
-          <span class="status-msg" id="code-sync-status">Synced</span>
-        </div>
-      </div>
-      <div class="editor-container" id="monaco-editor-container">
-        <!-- Monaco editor goes here -->
-      </div>
     </div>
   </div>
 

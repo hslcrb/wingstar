@@ -27,9 +27,17 @@ export class CanvasManager {
     this.setupResizeListeners();
     this.setupDeleteListener();
     this.setupDragAndDrop();
+
+    // Listen to outer window resize once to prevent memory leaks
+    window.addEventListener('resize', () => {
+      this.updateOverlayPosition();
+    });
   }
 
   public setContent(html: string) {
+    // Clear selection state before reloading iframe DOM to prevent detached node reference errors
+    this.selectElement(null);
+
     const doc = this.iframe.contentDocument || this.iframe.contentWindow?.document;
     if (!doc) return;
 
@@ -155,12 +163,8 @@ export class CanvasManager {
       }
     });
 
-    // Sync overlay positioning when scrolling or resizing window inside iframe
+    // Sync overlay positioning when scrolling inside iframe
     this.iframe.contentWindow?.addEventListener('scroll', () => {
-      this.updateOverlayPosition();
-    });
-
-    window.addEventListener('resize', () => {
       this.updateOverlayPosition();
     });
 
