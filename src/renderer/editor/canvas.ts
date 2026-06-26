@@ -35,6 +35,7 @@ export class CanvasManager {
     this.setupResizeListeners();
     this.setupDeleteListener();
     this.setupDragAndDrop();
+    this.setupLabelDragListener();
 
     // Listen to outer window resize once to prevent memory leaks
     window.addEventListener('resize', () => {
@@ -364,6 +365,138 @@ export class CanvasManager {
 
     workspaceRoot.addEventListener('drop', (e: DragEvent) => {
       canvasWrapper.classList.remove('drag-over');
+    });
+  }
+
+  private setupLabelDragListener() {
+    this.label.style.cursor = 'grab';
+
+    this.label.addEventListener('mousedown', (e: MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (!this.selectedElement) return;
+
+      this.label.style.cursor = 'grabbing';
+      const selected = this.selectedElement;
+
+      // Save original styles and disable pointer-events to perform hit testing
+      const originalPointerEvents = selected.style.pointerEvents;
+      selected.style.pointerEvents = 'none';
+
+      let lastHoveredEl: HTMLElement | null = null;
+      let lastPlacement: 'before' | 'after' | 'append' = 'append';
+
+      const iframeDoc = this.iframe.contentDocument || this.iframe.contentWindow?.document;
+      if (!iframeDoc) return;
+
+      // Create a visual indicator element inside iframe for drop placement
+      let dropIndicator = iframeDoc.getElementById('wingstar-drop-indicator') as HTMLElement;
+      if (!dropIndicator) {
+        dropIndicator = iframeDoc.createElement('div');
+        dropIndicator.id = 'wingstar-drop-indicator';
+        dropIndicator.style.cssText = `
+          height: 4px;
+          background-color: #8b5cf6;
+          box-shadow: 0 0 8px rgba(139, 92, 246, 0.8);
+          position: relative;
+          transition: all 0.1s ease;
+          pointer-events: none;
+          margin: 4px 0;
+          z-index: 9999;
+        `;
+      }
+
+      const onMouseMove = (moveEvent: MouseEvent) => {
+        const iframeRect = this.iframe.getBoundingClientRect();
+        
+        let clientX = moveEvent.clientX;
+        let clientY = moveEvent.clientY;
+
+        // If mouse is inside parent window context, translate by iframe bounds
+        if (moveEvent.currentTarget === window) {
+          clientX = moveEvent.clientX - iframeRect.left;
+          clientY = moveEvent.clientY - iframeRect.top;
+        }
+
+        const hovered = iframeDoc.elementFromPoint(clientX, clientY) as HTMLElement | null;
+
+        if (hovered && hovered !== iframeDoc.body && hovered !== iframeDoc.documentElement && !selected.contains(hovered)) {
+          lastHoveredEl = hovered;
+          
+          const hoveredRect = hovered.getBoundingClientRect();
+          const relativeY = clientY - hoveredRect.top;
+          
+          const containerTags = ['section', 'div', 'header', 'footer', 'main', 'aside', 'article'];
+          const isContainer = containerTags.includes(hovered.tagName.toLowerCase());
+
+          // Decide placement based on mouse position relative to hovered element bounds
+          if (isContainer && relativeY > hoveredRect.height * 0.25 && relativeY < hoveredRect.height * 0.75) {
+            lastPlacement = 'append';
+            hovered.style.outline = '2px dashed #8b5cf6';
+            if (dropIndicator.parentNode) dropIndicator.remove();
+          } else {
+            // Edge areas: insert before or after sibling
+            if (relativeY < hoveredRect.height * 0.5) {
+              lastPlacement = 'before';
+              hovered.parentNode?.insertBefore(dropIndicator, hovered);
+            } else {
+              lastPlacement = 'after';
+              hovered.parentNode?.insertBefore(dropIndicator, hovered.nextSibling);
+            }
+            hovered.style.outline = '';
+          }
+        } else {
+          if (dropIndicator.parentNode) dropIndicator.remove();
+          if (lastHoveredEl) lastHoveredEl.style.outline = '';
+          lastHoveredEl = null;
+        }
+        
+        this.updateOverlayPosition();
+      };
+
+      const onMouseUp = () => {
+        this.label.style.cursor = 'grab';
+        selected.style.pointerEvents = originalPointerEvents;
+
+        // Clean up temporary UI styles
+        if (dropIndicator.parentNode) dropIndicator.remove();
+        if (lastHoveredEl) lastHoveredEl.style.outline = '';
+
+        // Execute visual DOM node repositioning
+        if (lastHoveredEl) {
+          if (lastPlacement === 'append') {
+            lastHoveredEl.appendChild(selected);
+          } else if (lastPlacement === 'before') {
+            lastHoveredEl.parentNode?.insertBefore(selected, lastHoveredEl);
+          } else if (lastPlacement === 'after') {
+            lastHoveredEl.parentNode?.insertBefore(selected, lastHoveredEl.nextSibling);
+          }
+
+          // Strip absolute layout attributes to protect flow-based responsive code
+          selected.style.position = '';
+          selected.style.left = '';
+          selected.style.top = '';
+          selected.style.right = '';
+          selected.style.bottom = '';
+          selected.style.transform = '';
+          
+          this.selectElement(selected);
+          this.notifyChanges();
+        }
+
+        // Unbind event listeners
+        window.removeEventListener('mousemove', onMouseMove);
+        window.removeEventListener('mouseup', onMouseUp);
+        iframeDoc.removeEventListener('mousemove', onMouseMove);
+        iframeDoc.removeEventListener('mouseup', onMouseUp);
+      };
+
+      // Bind to both windows for flawless event capturing across iframe boundaries
+      window.addEventListener('mousemove', onMouseMove);
+      window.addEventListener('mouseup', onMouseUp);
+      iframeDoc.addEventListener('mousemove', onMouseMove);
+      iframeDoc.addEventListener('mouseup', onMouseUp);
     });
   }
 

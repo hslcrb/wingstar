@@ -283,10 +283,141 @@ document.addEventListener('DOMContentLoaded', () => {
   renderPagesList();
 
   // ─────────────────────────────────────────────
-  // 10. Vector Graphics Importer (SVG & EPS)
+  // 10. Vector-to-HTML Layout Compiler
+  // ─────────────────────────────────────────────
+  function compileVectorToHTML(svgMarkup: string): string {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(svgMarkup, 'image/svg+xml');
+    const svg = doc.querySelector('svg');
+    if (!svg) return svgMarkup;
+
+    function getStyle(el: Element, attr: string, defaultValue = ''): string {
+      const direct = el.getAttribute(attr);
+      if (direct) return direct;
+      
+      const styleAttr = el.getAttribute('style');
+      if (styleAttr) {
+        const match = styleAttr.match(new RegExp(`(?:^|;)\\s*${attr}\\s*:\\s*([^;]+)`));
+        if (match) return match[1].trim();
+      }
+      return defaultValue;
+    }
+
+    function parseColor(color: string) {
+      if (!color || color === 'none' || color === 'transparent') return 'transparent';
+      return color;
+    }
+
+    function colorToHex(color: string): string {
+      if (!color || color === 'none' || color === 'transparent') return 'transparent';
+      if (color.startsWith('#')) return color;
+      const match = color.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+      if (match) {
+        const r = parseInt(match[1]).toString(16).padStart(2, '0');
+        const g = parseInt(match[2]).toString(16).padStart(2, '0');
+        const b = parseInt(match[3]).toString(16).padStart(2, '0');
+        return `#${r}${g}${b}`;
+      }
+      return color;
+    }
+
+    function processNode(node: Element): string {
+      const tagName = node.tagName.toLowerCase();
+      const id = node.getAttribute('id') || node.getAttribute('data-name') || '';
+      const idAttr = id ? ` id="${id}"` : '';
+
+      if (tagName === 'g') {
+        const childrenHtml = Array.from(node.children).map(child => processNode(child)).join('\n');
+        const hasText = node.querySelector('text') !== null;
+        const hasShape = node.querySelector('rect, circle, ellipse') !== null;
+        
+        if (hasText && hasShape) {
+          return `
+<button${idAttr} class="btn" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 16px; border-radius: 6px; border: 1px solid var(--border-color, #232335); background-color: var(--bg-input, #1a1a26); color: var(--text-main, #f1f1f7); cursor: pointer; transition: all 0.2s ease;">
+  ${childrenHtml}
+</button>`.trim();
+        }
+        
+        return `<div${idAttr} class="vector-group" style="display: flex; flex-direction: column; gap: 8px; position: relative;">\n${childrenHtml}\n</div>`;
+      }
+
+      if (tagName === 'text') {
+        const fontSize = getStyle(node, 'font-size', '14px');
+        const fontFamily = getStyle(node, 'font-family', 'inherit');
+        const fill = colorToHex(getStyle(node, 'fill', '#ffffff'));
+        const textContent = node.textContent || 'Text';
+
+        return `<span${idAttr} style="font-size: ${fontSize}; font-family: ${fontFamily}; color: ${fill}; font-weight: 500; display: inline-block;">${textContent}</span>`;
+      }
+
+      if (tagName === 'rect') {
+        const width = node.getAttribute('width') || '80';
+        const height = node.getAttribute('height') || '40';
+        const fill = colorToHex(getStyle(node, 'fill', '#ffffff'));
+        const stroke = colorToHex(getStyle(node, 'stroke', 'none'));
+        const strokeWidth = getStyle(node, 'stroke-width', '0');
+        const rx = node.getAttribute('rx') || '0';
+
+        const borderStyle = stroke !== 'transparent' ? `border: ${strokeWidth}px solid ${stroke};` : '';
+        const borderRadiusStyle = rx !== '0' ? `border-radius: ${rx}px;` : '';
+
+        return `<div${idAttr} style="width: ${width}px; height: ${height}px; background-color: ${fill}; ${borderStyle} ${borderRadiusStyle} display: inline-block; position: relative; min-width: 10px; min-height: 10px;"></div>`;
+      }
+
+      if (tagName === 'circle' || tagName === 'ellipse') {
+        const rx = tagName === 'circle' ? parseFloat(node.getAttribute('r') || '25') : parseFloat(node.getAttribute('rx') || '25');
+        const ry = tagName === 'circle' ? rx : parseFloat(node.getAttribute('ry') || '25');
+        const fill = colorToHex(getStyle(node, 'fill', '#ffffff'));
+        const stroke = colorToHex(getStyle(node, 'stroke', 'none'));
+        const strokeWidth = getStyle(node, 'stroke-width', '0');
+
+        const borderStyle = stroke !== 'transparent' ? `border: ${strokeWidth}px solid ${stroke};` : '';
+
+        return `<div${idAttr} style="width: ${rx * 2}px; height: ${ry * 2}px; background-color: ${fill}; ${borderStyle} border-radius: 50%; display: inline-block; position: relative;"></div>`;
+      }
+
+      if (['path', 'polygon', 'polyline', 'line'].includes(tagName)) {
+        const fill = colorToHex(getStyle(node, 'fill', 'currentColor'));
+        const stroke = colorToHex(getStyle(node, 'stroke', 'none'));
+        const strokeWidth = getStyle(node, 'stroke-width', '0');
+
+        let viewBox = '0 0 100 100';
+        let parent = node.parentElement;
+        while (parent) {
+          if (parent.tagName.toLowerCase() === 'svg') {
+            viewBox = parent.getAttribute('viewBox') || '0 0 100 100';
+            break;
+          }
+          parent = parent.parentElement;
+        }
+
+        const clone = node.cloneNode(true) as Element;
+        clone.removeAttribute('fill');
+        clone.removeAttribute('stroke');
+        clone.removeAttribute('stroke-width');
+
+        return `
+<svg${idAttr} viewBox="${viewBox}" width="32" height="32" fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" style="display: inline-block; vertical-align: middle;">
+  ${clone.outerHTML}
+</svg>`.trim();
+      }
+
+      return '';
+    }
+
+    const childrenHtml = Array.from(svg.children).map(child => processNode(child)).join('\n');
+    const rootId = svg.getAttribute('id') || `vector-layout-${Date.now()}`;
+
+    return `
+<div id="${rootId}" class="compiled-vector-layout" style="display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: center; padding: 24px; border: 1px solid var(--border-color, #232335); background-color: var(--bg-panel, #12121c); border-radius: 8px;">
+  ${childrenHtml}
+</div>`.trim();
+  }
+
+  // ─────────────────────────────────────────────
+  // 11. Vector Graphics Importer (SVG & EPS)
   // ─────────────────────────────────────────────
   const btnImportVector = document.getElementById('btn-import-vector') as HTMLElement;
-  
   btnImportVector.addEventListener('click', async () => {
     try {
       const file = await window.electronAPI.openFile();
@@ -320,49 +451,79 @@ ${pathsMarkup}
         svgMarkup = file.content;
       }
 
-      // Inject tracking IDs into the parsed markup so we can link tree node to iframe DOM
+      const shouldCompileToHtml = confirm(
+        "가져온 벡터(SVG/EPS) 데이터를 편집 가능한 순수 HTML 레이아웃(div, span, button)으로 즉시 변환하여 가져오겠습니까?\n\n[확인] - 편집 가능한 최적화 HTML 레이아웃으로 컴파일 변환\n[취소] - 원본 SVG로 삽입"
+      );
+
       const parser = new DOMParser();
-      const doc = parser.parseFromString(svgMarkup, 'image/svg+xml');
-      const rootSvg = doc.querySelector('svg');
-      if (!rootSvg) {
-        alert('Invalid SVG vector data loaded.');
-        return;
-      }
 
-      let trackingCounter = 0;
-      const assignTrackingIds = (el: Element) => {
-        const trackingId = `vtrack-${Date.now()}-${trackingCounter++}`;
-        el.setAttribute('data-vnode-id', trackingId);
-        
-        for (let i = 0; i < el.children.length; i++) {
-          assignTrackingIds(el.children[i]);
+      if (shouldCompileToHtml) {
+        // Run compiler
+        const compiledHtml = compileVectorToHTML(svgMarkup);
+
+        const iframeDoc = (document.getElementById('editor-frame') as HTMLIFrameElement).contentDocument;
+        if (iframeDoc) {
+          const tempDiv = iframeDoc.createElement('div');
+          tempDiv.innerHTML = compiledHtml.trim();
+          const newHtmlNode = tempDiv.firstChild as HTMLElement;
+          iframeDoc.body.appendChild(newHtmlNode);
+          
+          canvasManager.selectElement(newHtmlNode);
+          const currentHTML = canvasManager.getContent();
+          projectPages[activePageName] = currentHTML;
+          codeEditorManager.setCode(currentHTML);
+          
+          // Switch to layout components tab
+          const compTabBtn = document.querySelector('.tab-link[data-tab="tab-components"]') as HTMLElement;
+          if (compTabBtn) compTabBtn.click();
+
+          confetti({ particleCount: 50, angle: 60, spread: 55, origin: { x: 0 } });
+          confetti({ particleCount: 50, angle: 120, spread: 55, origin: { x: 1 } });
         }
-      };
-      assignTrackingIds(rootSvg);
+      } else {
+        // Inject tracking IDs into the parsed markup so we can link tree node to iframe DOM
+        const doc = parser.parseFromString(svgMarkup, 'image/svg+xml');
+        const rootSvg = doc.querySelector('svg');
+        if (!rootSvg) {
+          alert('Invalid SVG vector data loaded.');
+          return;
+        }
 
-      const trackedSvgMarkup = rootSvg.outerHTML;
+        let trackingCounter = 0;
+        const assignTrackingIds = (el: Element) => {
+          const trackingId = `vtrack-${Date.now()}-${trackingCounter++}`;
+          el.setAttribute('data-vnode-id', trackingId);
+          
+          for (let i = 0; i < el.children.length; i++) {
+            assignTrackingIds(el.children[i]);
+          }
+        };
+        assignTrackingIds(rootSvg);
 
-      // Add to Canvas Body
-      const iframeDoc = (document.getElementById('editor-frame') as HTMLIFrameElement).contentDocument;
-      if (iframeDoc) {
-        const tempDiv = iframeDoc.createElement('div');
-        tempDiv.innerHTML = trackedSvgMarkup.trim();
-        const newSvgNode = tempDiv.firstChild as HTMLElement;
-        iframeDoc.body.appendChild(newSvgNode);
-        
-        canvasManager.selectElement(newSvgNode);
-        const currentHTML = canvasManager.getContent();
-        projectPages[activePageName] = currentHTML;
-        codeEditorManager.setCode(currentHTML);
-        
-        activeVectorRoot = parseSVG(trackedSvgMarkup);
-        renderLayersTree();
+        const trackedSvgMarkup = rootSvg.outerHTML;
 
-        const vectorsTabBtn = document.querySelector('.tab-link[data-tab="tab-vectors"]') as HTMLElement;
-        if (vectorsTabBtn) vectorsTabBtn.click();
+        // Add to Canvas Body
+        const iframeDoc = (document.getElementById('editor-frame') as HTMLIFrameElement).contentDocument;
+        if (iframeDoc) {
+          const tempDiv = iframeDoc.createElement('div');
+          tempDiv.innerHTML = trackedSvgMarkup.trim();
+          const newSvgNode = tempDiv.firstChild as HTMLElement;
+          iframeDoc.body.appendChild(newSvgNode);
+          
+          canvasManager.selectElement(newSvgNode);
+          const currentHTML = canvasManager.getContent();
+          projectPages[activePageName] = currentHTML;
+          codeEditorManager.setCode(currentHTML);
+          
+          activeVectorRoot = parseSVG(trackedSvgMarkup);
+          renderLayersTree();
 
-        confetti({ particleCount: 50, angle: 60, spread: 55, origin: { x: 0 } });
-        confetti({ particleCount: 50, angle: 120, spread: 55, origin: { x: 1 } });
+          const vectorsTabBtn = document.querySelector('.tab-link[data-tab="tab-vectors"]') as HTMLElement;
+          if (vectorsTabBtn) vectorsTabBtn.click();
+
+          confetti({ particleCount: 50, angle: 60, spread: 55, origin: { x: 0 } });
+          confetti({ particleCount: 50, angle: 120, spread: 55, origin: { x: 1 } });
+        }
       }
     } catch (err: any) {
       alert(`Import error: ${err.message}`);
