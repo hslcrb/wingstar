@@ -50,17 +50,14 @@ export class CanvasManager {
     const doc = this.iframe.contentDocument || this.iframe.contentWindow?.document;
     if (!doc) return;
 
-    doc.open();
-    doc.write(html);
-    doc.close();
-
-    // Setup iframe interaction listeners once loaded
+    // Set onload BEFORE doc.write so it's ready when load fires after doc.close()
     this.iframe.onload = () => {
       this.bindIframeEvents();
     };
-    
-    // Backup bind if load event already fired
-    this.bindIframeEvents();
+
+    doc.open();
+    doc.write(html);
+    doc.close();
   }
 
   public getContent(): string {

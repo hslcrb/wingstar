@@ -66,13 +66,18 @@ export class CodeEditorManager {
 
   /**
    * Safely updates the editor code value without triggering recursive event feedback loops.
+   * Deferred via requestAnimationFrame to prevent blocking the browser render loop.
    */
   public setCode(code: string) {
     if (!this.editor) return;
     
-    this.isUpdatingSilently = true;
-    this.editor.setValue(code);
-    this.isUpdatingSilently = false;
+    // Use rAF to defer Monaco's heavy synchronous render, preventing UI jank
+    requestAnimationFrame(() => {
+      if (!this.editor) return;
+      this.isUpdatingSilently = true;
+      this.editor.setValue(code);
+      this.isUpdatingSilently = false;
+    });
   }
 
   /**

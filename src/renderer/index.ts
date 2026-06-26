@@ -461,27 +461,37 @@ ${pathsMarkup}
         // Run compiler
         const compiledHtml = compileVectorToHTML(svgMarkup);
 
-        const iframeDoc = (document.getElementById('editor-frame') as HTMLIFrameElement).contentDocument;
-        if (iframeDoc) {
-          const tempDiv = iframeDoc.createElement('div');
-          tempDiv.innerHTML = compiledHtml.trim();
-          const newHtmlNode = tempDiv.firstChild as HTMLElement;
-          iframeDoc.body.appendChild(newHtmlNode);
-          
-          canvasManager.selectElement(newHtmlNode);
-          const currentHTML = canvasManager.getContent();
-          projectPages[activePageName] = currentHTML;
-          codeEditorManager.setCode(currentHTML);
-          
-          // Switch to layout components tab
-          const compTabBtn = document.querySelector('.tab-link[data-tab="tab-components"]') as HTMLElement;
-          if (compTabBtn) compTabBtn.click();
+        // 기존 HTML 코드에 새 노드를 문자열로 삽입 (iframe 직접 DOM 조작 안 함)
+        const currentHtml = canvasManager.getContent();
+        const injected = currentHtml.replace('</body>', `\n${compiledHtml}\n</body>`);
 
-          confetti({ particleCount: 50, angle: 60, spread: 55, origin: { x: 0 } });
-          confetti({ particleCount: 50, angle: 120, spread: 55, origin: { x: 1 } });
-        }
+        canvasManager.setContent(injected);
+        projectPages[activePageName] = injected;
+        // setCode는 silent하게 — onCodeChanged 콜백을 유발하지 않도록
+        codeEditorManager.setCode(injected);
+
+        // iframe 로드 완료 후 첫 번째 추가된 노드를 선택
+        const frameEl = document.getElementById('editor-frame') as HTMLIFrameElement;
+        const selectAfterLoad = () => {
+          const frameDoc = frameEl.contentDocument;
+          if (frameDoc) {
+            const inserted = frameDoc.querySelector('.compiled-vector-layout') as HTMLElement;
+            if (inserted) {
+              canvasManager.selectElement(inserted);
+            }
+          }
+          frameEl.removeEventListener('load', selectAfterLoad);
+        };
+        frameEl.addEventListener('load', selectAfterLoad);
+
+        // Switch to layout components tab
+        const compTabBtn = document.querySelector('.tab-link[data-tab="tab-components"]') as HTMLElement;
+        if (compTabBtn) compTabBtn.click();
+
+        confetti({ particleCount: 50, angle: 60, spread: 55, origin: { x: 0 } });
+        confetti({ particleCount: 50, angle: 120, spread: 55, origin: { x: 1 } });
       } else {
-        // Inject tracking IDs into the parsed markup so we can link tree node to iframe DOM
+        // Inject tracking IDs and insert via HTML string to avoid iframe reload race condition
         const doc = parser.parseFromString(svgMarkup, 'image/svg+xml');
         const rootSvg = doc.querySelector('svg');
         if (!rootSvg) {
@@ -493,7 +503,6 @@ ${pathsMarkup}
         const assignTrackingIds = (el: Element) => {
           const trackingId = `vtrack-${Date.now()}-${trackingCounter++}`;
           el.setAttribute('data-vnode-id', trackingId);
-          
           for (let i = 0; i < el.children.length; i++) {
             assignTrackingIds(el.children[i]);
           }
@@ -502,28 +511,35 @@ ${pathsMarkup}
 
         const trackedSvgMarkup = rootSvg.outerHTML;
 
-        // Add to Canvas Body
-        const iframeDoc = (document.getElementById('editor-frame') as HTMLIFrameElement).contentDocument;
-        if (iframeDoc) {
-          const tempDiv = iframeDoc.createElement('div');
-          tempDiv.innerHTML = trackedSvgMarkup.trim();
-          const newSvgNode = tempDiv.firstChild as HTMLElement;
-          iframeDoc.body.appendChild(newSvgNode);
-          
-          canvasManager.selectElement(newSvgNode);
-          const currentHTML = canvasManager.getContent();
-          projectPages[activePageName] = currentHTML;
-          codeEditorManager.setCode(currentHTML);
-          
-          activeVectorRoot = parseSVG(trackedSvgMarkup);
-          renderLayersTree();
+        // 기존 HTML에 SVG를 문자열로 주입 → setContent로 iframe 재로드
+        const currentHtml = canvasManager.getContent();
+        const injected = currentHtml.replace('</body>', `\n${trackedSvgMarkup}\n</body>`);
 
-          const vectorsTabBtn = document.querySelector('.tab-link[data-tab="tab-vectors"]') as HTMLElement;
-          if (vectorsTabBtn) vectorsTabBtn.click();
+        canvasManager.setContent(injected);
+        projectPages[activePageName] = injected;
+        codeEditorManager.setCode(injected);
 
-          confetti({ particleCount: 50, angle: 60, spread: 55, origin: { x: 0 } });
-          confetti({ particleCount: 50, angle: 120, spread: 55, origin: { x: 1 } });
-        }
+        // iframe 로드 완료 후 삽입된 SVG 노드를 선택 상태로 설정
+        const frameEl = document.getElementById('editor-frame') as HTMLIFrameElement;
+        const selectSvgAfterLoad = () => {
+          const frameDoc = frameEl.contentDocument;
+          if (frameDoc) {
+            const insertedSvg = frameDoc.querySelector(`[data-vnode-id^="vtrack-"]`) as HTMLElement;
+            if (insertedSvg) {
+              canvasManager.selectElement(insertedSvg);
+              activeVectorRoot = parseSVG(trackedSvgMarkup);
+              renderLayersTree();
+
+              const vectorsTabBtn = document.querySelector('.tab-link[data-tab="tab-vectors"]') as HTMLElement;
+              if (vectorsTabBtn) vectorsTabBtn.click();
+            }
+          }
+          frameEl.removeEventListener('load', selectSvgAfterLoad);
+        };
+        frameEl.addEventListener('load', selectSvgAfterLoad);
+
+        confetti({ particleCount: 50, angle: 60, spread: 55, origin: { x: 0 } });
+        confetti({ particleCount: 50, angle: 120, spread: 55, origin: { x: 1 } });
       }
     } catch (err: any) {
       alert(`Import error: ${err.message}`);
