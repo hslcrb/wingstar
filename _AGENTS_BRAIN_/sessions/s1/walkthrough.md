@@ -4,9 +4,11 @@ This document summarizes the changes made to recover the WYSIWYG editor interact
 
 ## Changes Made
 
-### 1. WYSIWYG Interactivity Recovery
-- **File**: [index.css](file:///d:/wingstar/src/renderer/index.css)
-- **Detail**: Removed `pointer-events: none` on `#editor-frame` and its `.live-mode` overrides. Clicks, double-clicks, and drag events are now properly routed to the iframe's DOM elements in Design Mode.
+### 1. WYSIWYG Interactivity Recovery & Resizing Fix
+- **File**: [index.css](file:///d:/wingstar/src/renderer/index.css), [canvas.ts](file:///d:/wingstar/src/renderer/editor/canvas.ts)
+- **Detail**:
+  - Removed `pointer-events: none` on `#editor-frame` and its `.live-mode` overrides to restore element click/double-click selection.
+  - Fixed a bug where cursor hover over handles or dragging would cause size locking. When dragging mouse onto the iframe, the parent document missed the `mouseup` event, trapping the UI in a perpetual resize state. We fixed this by setting `this.iframe.style.pointerEvents = 'none'` on mousedown and restoring it to `''` on mouseup.
 
 ### 2. Layout Resizer Handlers
 - **File**: [index.html](file:///d:/wingstar/src/renderer/index.html)

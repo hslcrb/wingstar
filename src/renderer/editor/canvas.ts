@@ -273,6 +273,7 @@ export class CanvasManager {
         if (!this.selectedElement) return;
 
         this.isResizing = true;
+        this.iframe.style.pointerEvents = 'none';
         
         // Find direction from class (tl, tr, bl, br)
         const classes = el.className.split(/\s+/);
@@ -326,6 +327,7 @@ export class CanvasManager {
   private handleMouseUp = () => {
     if (this.isResizing) {
       this.isResizing = false;
+      this.iframe.style.pointerEvents = '';
       document.removeEventListener('mousemove', this.handleMouseMove);
       document.removeEventListener('mouseup', this.handleMouseUp);
       this.notifyChanges();
