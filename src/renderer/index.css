@@ -668,14 +668,6 @@ h1, h2, h3, h4 {
   border-radius: 8px;
   background: #ffffff;
   display: block;
-  pointer-events: none; /* Design mode: clicks go to overlay handlers */
-  transition: pointer-events 0s;
-}
-
-/* Live mode: allow iframe to receive native mouse events */
-.canvas-wrapper.live-mode #editor-frame {
-  pointer-events: auto;
-  cursor: default;
 }
 
 .canvas-wrapper.live-mode {
@@ -1078,5 +1070,52 @@ h1, h2, h3, h4 {
 
 /* Helpers */
 .hidden {
+  display: none !important;
+}
+
+/* Panel Resizers */
+.panel-resizer {
+  width: 4px;
+  background-color: var(--border-color);
+  cursor: col-resize;
+  position: relative;
+  z-index: 20;
+  flex-shrink: 0;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.panel-resizer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -4px;
+  right: -4px;
+  cursor: col-resize;
+}
+
+.panel-resizer:hover,
+.panel-resizer.dragging {
+  background-color: var(--primary);
+  box-shadow: 0 0 10px var(--primary-glow);
+}
+
+/* Resizing overrides */
+.main-container.resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+.main-container.resizing .sidebar,
+.main-container.resizing .code-editor-panel,
+.main-container.resizing .workspace-root {
+  transition: none !important;
+}
+
+.main-container.resizing iframe {
+  pointer-events: none !important;
+}
+
+#code-editor-panel.hidden + #resizer-center {
   display: none !important;
 }

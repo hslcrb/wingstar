@@ -24,7 +24,7 @@ function createWindow() {
   if (isDev) {
     // Development: Load local Vite development server
     mainWindow.loadURL('http://localhost:5173');
-    mainWindow.webContents.openDevTools();
+    // DevTools는 수동으로 Ctrl+Shift+I 또는 F12 로만 열 수 있음
   } else {
     // Production: Load compiled index.html
     mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
