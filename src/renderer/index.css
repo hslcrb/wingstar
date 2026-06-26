@@ -455,12 +455,20 @@ h1, h2, h3, h4 {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 10px;
+  padding: 6px 10px;
   font-size: 0.85rem;
   border-radius: 6px;
   cursor: pointer;
   color: var(--text-muted);
   transition: all var(--transition-speed) ease;
+  position: relative;
+}
+
+.page-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .page-item:hover {
@@ -472,6 +480,30 @@ h1, h2, h3, h4 {
   background: rgba(139, 92, 246, 0.1);
   color: var(--primary);
   border: 1px solid rgba(139, 92, 246, 0.2);
+}
+
+.page-delete-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  width: 18px;
+  height: 18px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all var(--transition-speed) ease;
+}
+
+.page-item:hover .page-delete-btn {
+  display: flex;
+}
+
+.page-delete-btn:hover {
+  background: rgba(248, 113, 113, 0.15);
+  color: var(--error);
 }
 
 /* Vector Layers Tree */
@@ -636,6 +668,20 @@ h1, h2, h3, h4 {
   border-radius: 8px;
   background: #ffffff;
   display: block;
+  pointer-events: none; /* Design mode: clicks go to overlay handlers */
+  transition: pointer-events 0s;
+}
+
+/* Live mode: allow iframe to receive native mouse events */
+.canvas-wrapper.live-mode #editor-frame {
+  pointer-events: auto;
+  cursor: default;
+}
+
+.canvas-wrapper.live-mode {
+  box-shadow: 0 20px 50px rgba(34, 211, 238, 0.2);
+  outline: 2px solid var(--cyan);
+  outline-offset: 2px;
 }
 
 /* WYSIWYG Selection & Handles Overlay (rendered on top of frame wrapper) */
@@ -861,12 +907,15 @@ h1, h2, h3, h4 {
   background: var(--bg-hover);
   border: 1px solid var(--border-color);
   color: var(--text-main);
-  padding: 6px;
+  padding: 4px 8px;
   font-size: 0.75rem;
   font-weight: 500;
   border-radius: 4px;
   cursor: pointer;
   text-align: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   transition: all var(--transition-speed) ease;
 }
 
@@ -990,6 +1039,41 @@ h1, h2, h3, h4 {
 /* Drag-over indicator on iframe canvas */
 .canvas-wrapper.drag-over {
   box-shadow: 0 0 0 3px var(--primary), 0 20px 50px rgba(139, 92, 246, 0.3);
+}
+
+/* Live Mode Toggle Button Active State */
+.toggle-btn.live-active {
+  color: var(--cyan);
+  background: rgba(34, 211, 238, 0.1);
+  border-color: rgba(34, 211, 238, 0.3);
+}
+
+/* SVG Properties Group Highlighting */
+#group-svg-properties {
+  border-color: var(--accent);
+  background: rgba(251, 191, 36, 0.02);
+}
+
+#group-svg-properties .group-title {
+  border-bottom-color: var(--accent-dark);
+  color: var(--accent);
+}
+
+/* Number inputs */
+.control-field input[type="number"] {
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  padding: 6px 10px;
+  font-size: 0.85rem;
+  border-radius: 6px;
+  width: 100%;
+}
+
+.control-field input[type="number"]:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 5px var(--primary-glow);
 }
 
 /* Helpers */

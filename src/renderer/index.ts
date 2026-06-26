@@ -20,13 +20,23 @@ document.addEventListener('DOMContentLoaded', () => {
   const codeEditorManager = new CodeEditorManager('monaco-editor-container');
 
   // Debounced raw code editor update to canvas
-  let codeChangeTimeout: NodeJS.Timeout;
+  let codeChangeTimeout: ReturnType<typeof setTimeout>;
   const DEBOUNCE_DELAY = 600;
 
   // Track parsed vector root for layers tree mapping
   let activeVectorRoot: VectorNode | null = null;
 
-  // 2. Initialize Code Editor and Load Default Template
+  // ─────────────────────────────────────────────
+  // 2. Multi-Page State
+  // ─────────────────────────────────────────────
+  let projectPages: { [filename: string]: string } = {
+    'index.html': defaultHTML
+  };
+  let activePageName = 'index.html';
+
+  // ─────────────────────────────────────────────
+  // 3. Initialize Code Editor and Load Default Template
+  // ─────────────────────────────────────────────
   codeEditorManager.init(defaultHTML, () => {
     // Once Monaco Editor is ready, load content into canvas and dismiss splash
     canvasManager.setContent(defaultHTML);
@@ -39,15 +49,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 1200);
   });
 
-  // 3. Bidirectional Syncing
-  
+  // ─────────────────────────────────────────────
+  // 4. Bidirectional Syncing
+  // ─────────────────────────────────────────────
+
   // Canvas interactions update Property Inspector & Code Editor
   canvasManager.onElementSelected((el) => {
     propertiesManager.bindElement(el);
   });
 
   canvasManager.onCanvasChanged((newHTML) => {
-    // Update code editor immediately during visual updates
+    projectPages[activePageName] = newHTML;
     codeEditorManager.setCode(newHTML);
     updateVectorLayersTreeFromCanvas();
   });
@@ -56,6 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
   propertiesManager.onStyleChanged(() => {
     canvasManager.updateOverlayPosition();
     const currentHTML = canvasManager.getContent();
+    projectPages[activePageName] = currentHTML;
     codeEditorManager.setCode(currentHTML);
   });
 
@@ -71,16 +84,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     codeChangeTimeout = setTimeout(() => {
       canvasManager.setContent(newCode);
+      projectPages[activePageName] = newCode;
       if (syncStatus) {
         syncStatus.textContent = 'Synced';
         syncStatus.style.color = 'var(--success)';
       }
-      // Re-evaluate layers tree in case SVG markup was modified
       updateVectorLayersTreeFromCanvas();
     }, DEBOUNCE_DELAY);
   });
 
-  // 4. Sidebar Tabs Controller
+  // ─────────────────────────────────────────────
+  // 5. Sidebar Tabs Controller
+  // ─────────────────────────────────────────────
   const tabLinks = document.querySelectorAll('.tab-link');
   tabLinks.forEach(link => {
     link.addEventListener('click', () => {
@@ -99,7 +114,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // 5. Sidebar Component Drag events
+  // ─────────────────────────────────────────────
+  // 6. Sidebar Component Drag events
+  // ─────────────────────────────────────────────
   const compItems = document.querySelectorAll('.component-item');
   compItems.forEach(item => {
     item.setAttribute('draggable', 'true');
@@ -109,7 +126,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // 6. Split Code Panel Toggle
+  // ─────────────────────────────────────────────
+  // 7. Split Code Panel Toggle
+  // ─────────────────────────────────────────────
   const btnToggleSplit = document.getElementById('btn-toggle-split') as HTMLElement;
   const codeEditorPanel = document.getElementById('code-editor-panel') as HTMLElement;
   
@@ -117,7 +136,6 @@ document.addEventListener('DOMContentLoaded', () => {
     btnToggleSplit.classList.toggle('active');
     codeEditorPanel.classList.toggle('hidden');
     
-    // Reposition selection handles once flex layout settles
     setTimeout(() => {
       canvasManager.updateOverlayPosition();
     }, 200);
@@ -129,7 +147,144 @@ document.addEventListener('DOMContentLoaded', () => {
     codeEditorManager.formatCode();
   });
 
-  // 7. Vector Graphics Importer (SVG & EPS)
+  // ─────────────────────────────────────────────
+  // 8. Live / Design Mode Toggle
+  // ─────────────────────────────────────────────
+  const btnToggleLive = document.getElementById('btn-toggle-live') as HTMLElement;
+  const canvasWrapper = document.getElementById('canvas-wrapper') as HTMLElement;
+
+  btnToggleLive.addEventListener('click', () => {
+    const isCurrentlyLive = canvasManager.getLiveMode();
+    const willBeLive = !isCurrentlyLive;
+
+    canvasManager.setLiveMode(willBeLive);
+
+    if (willBeLive) {
+      btnToggleLive.classList.add('live-active');
+      btnToggleLive.innerHTML = `
+        <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+        </svg>
+        Live
+      `;
+      canvasWrapper.classList.add('live-mode');
+    } else {
+      btnToggleLive.classList.remove('live-active');
+      btnToggleLive.innerHTML = `
+        <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polygon points="10 8 16 12 10 16 10 8" fill="currentColor" stroke="none"></polygon>
+        </svg>
+        Design
+      `;
+      canvasWrapper.classList.remove('live-mode');
+    }
+  });
+
+  // ─────────────────────────────────────────────
+  // 9. Multi-Page Project Management
+  // ─────────────────────────────────────────────
+  const pagesList = document.getElementById('pages-list') as HTMLElement;
+  const btnAddPage = document.getElementById('btn-add-page') as HTMLElement;
+
+  function renderPagesList() {
+    pagesList.innerHTML = '';
+    for (const pageName of Object.keys(projectPages)) {
+      const item = document.createElement('div');
+      item.className = `page-item${pageName === activePageName ? ' active' : ''}`;
+      item.setAttribute('data-page', pageName);
+
+      const isIndex = pageName === 'index.html';
+      item.innerHTML = `
+        <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+        </svg>
+        <span class="page-name">${pageName}</span>
+        ${!isIndex ? `
+        <button class="page-delete-btn" title="Delete page" data-delete-page="${pageName}">
+          <svg viewBox="0 0 24 24" width="10" height="10" stroke="currentColor" stroke-width="2.5" fill="none">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>` : ''}
+      `;
+
+      // Switch to page on click
+      item.addEventListener('click', (e) => {
+        const deleteTarget = (e.target as HTMLElement).closest('[data-delete-page]');
+        if (deleteTarget) return; // handled below
+        switchToPage(pageName);
+      });
+
+      // Delete page button
+      const deleteBtn = item.querySelector('[data-delete-page]');
+      if (deleteBtn) {
+        deleteBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const target = (e.currentTarget as HTMLElement).getAttribute('data-delete-page')!;
+          if (confirm(`Delete "${target}"? This cannot be undone.`)) {
+            delete projectPages[target];
+            if (activePageName === target) {
+              switchToPage('index.html');
+            }
+            renderPagesList();
+          }
+        });
+      }
+
+      pagesList.appendChild(item);
+    }
+  }
+
+  function switchToPage(pageName: string) {
+    // Save current page state
+    const currentCode = codeEditorManager.getCode();
+    projectPages[activePageName] = currentCode;
+
+    activePageName = pageName;
+
+    // Load new page
+    const pageContent = projectPages[activePageName];
+    canvasManager.setContent(pageContent);
+    codeEditorManager.setCode(pageContent);
+    canvasManager.selectElement(null);
+    activeVectorRoot = null;
+    renderLayersTree();
+    renderPagesList();
+  }
+
+  btnAddPage.addEventListener('click', () => {
+    let newName = prompt('Enter new page filename (e.g. about.html):');
+    if (!newName) return;
+    newName = newName.trim();
+    if (!newName.endsWith('.html')) newName += '.html';
+    // Sanitize filename
+    newName = newName.replace(/[^a-zA-Z0-9._-]/g, '_');
+
+    if (projectPages[newName]) {
+      alert(`Page "${newName}" already exists.`);
+      return;
+    }
+
+    // Create a fresh blank starter page
+    const blankPage = defaultHTML.replace('WingStar Project', newName.replace('.html', ''));
+    projectPages[newName] = blankPage;
+    renderPagesList();
+    switchToPage(newName);
+
+    // Switch pages tab into view
+    const pagesTabBtn = document.querySelector('.tab-link[data-tab="tab-pages"]') as HTMLElement;
+    if (pagesTabBtn) pagesTabBtn.click();
+  });
+
+  // Initial render
+  renderPagesList();
+
+  // ─────────────────────────────────────────────
+  // 10. Vector Graphics Importer (SVG & EPS)
+  // ─────────────────────────────────────────────
   const btnImportVector = document.getElementById('btn-import-vector') as HTMLElement;
   
   btnImportVector.addEventListener('click', async () => {
@@ -185,7 +340,6 @@ ${pathsMarkup}
       };
       assignTrackingIds(rootSvg);
 
-      // Extract the updated XML string
       const trackedSvgMarkup = rootSvg.outerHTML;
 
       // Add to Canvas Body
@@ -196,47 +350,34 @@ ${pathsMarkup}
         const newSvgNode = tempDiv.firstChild as HTMLElement;
         iframeDoc.body.appendChild(newSvgNode);
         
-        // Trigger select and sync changes
         canvasManager.selectElement(newSvgNode);
         const currentHTML = canvasManager.getContent();
+        projectPages[activePageName] = currentHTML;
         codeEditorManager.setCode(currentHTML);
         
-        // Parse node tree for Layer tree sidebar panel
         activeVectorRoot = parseSVG(trackedSvgMarkup);
         renderLayersTree();
 
-        // Switch to Vectors Tab in Sidebar
         const vectorsTabBtn = document.querySelector('.tab-link[data-tab="tab-vectors"]') as HTMLElement;
-        if (vectorsTabBtn) {
-          vectorsTabBtn.click();
-        }
+        if (vectorsTabBtn) vectorsTabBtn.click();
 
-        // Celebrate success
-        confetti({
-          particleCount: 50,
-          angle: 60,
-          spread: 55,
-          origin: { x: 0 }
-        });
-        confetti({
-          particleCount: 50,
-          angle: 120,
-          spread: 55,
-          origin: { x: 1 }
-        });
+        confetti({ particleCount: 50, angle: 60, spread: 55, origin: { x: 0 } });
+        confetti({ particleCount: 50, angle: 120, spread: 55, origin: { x: 1 } });
       }
     } catch (err: any) {
       alert(`Import error: ${err.message}`);
     }
   });
 
-  // Render vector structure sidebar tree
+  // ─────────────────────────────────────────────
+  // 11. Vector Layers Tree Renderer
+  // ─────────────────────────────────────────────
   function renderLayersTree() {
     const treeContainer = document.getElementById('vector-layers-tree') as HTMLElement;
     const badge = document.getElementById('vector-status') as HTMLElement;
     
     if (!activeVectorRoot) {
-      treeContainer.innerHTML = '<div class="tree-placeholder">No vector imported. Drag & Drop a .svg or .eps file or click "Import Vector" to load.</div>';
+      treeContainer.innerHTML = '<div class="tree-placeholder">No vector imported. Drag &amp; Drop a .svg or .eps file or click "Import Vector" to load.</div>';
       badge.textContent = 'Empty';
       return;
     }
@@ -260,22 +401,15 @@ ${pathsMarkup}
         ${hasId ? `<span class="layer-id-badge">${node.svgId}</span>` : ''}
       `;
 
-      // Select element on canvas when clicked in layers list
       itemEl.addEventListener('click', (e) => {
         e.stopPropagation();
         
-        // Highlight active sidebar item
         treeContainer.querySelectorAll('.layer-tree-item').forEach(el => el.classList.remove('selected'));
         itemEl.classList.add('selected');
 
         const iframeDoc = (document.getElementById('editor-frame') as HTMLIFrameElement).contentDocument;
         if (iframeDoc) {
-          // Find matching node inside iframe DOM using our tracking ID
-          // Look for data-vnode-id that matches this node's tracking key
-          const originalRootTrackId = activeVectorRoot?.attributes['data-vnode-id'];
-          const nodeOffset = parseInt(node.id.split('-')[1]); // Node Index
-          
-          // Query by attribute
+          const nodeOffset = parseInt(node.id.split('-')[1]);
           const matchEl = iframeDoc.querySelector(`[data-vnode-id^="vtrack-"][data-vnode-id$="-${nodeOffset}"]`);
           if (matchEl) {
             canvasManager.selectElement(matchEl as HTMLElement);
@@ -298,14 +432,12 @@ ${pathsMarkup}
     renderNodeRecursive(activeVectorRoot, 0);
   }
 
-  // Scan current Canvas DOM for any SVGs to reconstruct Vector Tree in case code edits happened
   function updateVectorLayersTreeFromCanvas() {
     const iframeDoc = (document.getElementById('editor-frame') as HTMLIFrameElement).contentDocument;
     if (!iframeDoc) return;
 
     const svg = iframeDoc.querySelector('svg:not(.wingstar-glow-logo)');
     if (svg) {
-      // Re-assign tracking IDs if missing
       let trackingCounter = 0;
       const rootTrackAttr = svg.getAttribute('data-vnode-id');
       
@@ -327,26 +459,32 @@ ${pathsMarkup}
     }
   }
 
-  // 8. Toolbar Button Commands
+  // ─────────────────────────────────────────────
+  // 12. Toolbar Button Commands
+  // ─────────────────────────────────────────────
   
   // Clear / Reset to standard page
   const btnNewProject = document.getElementById('btn-new-project') as HTMLElement;
   btnNewProject.addEventListener('click', () => {
-    if (confirm('Create a new page? Any unsaved changes in the current workspace will be discarded.')) {
+    if (confirm('Create a new project? All unsaved pages will be discarded.')) {
+      projectPages = { 'index.html': defaultHTML };
+      activePageName = 'index.html';
       canvasManager.setContent(defaultHTML);
       codeEditorManager.setCode(defaultHTML);
       canvasManager.selectElement(null);
       activeVectorRoot = null;
       renderLayersTree();
+      renderPagesList();
     }
   });
 
-  // Export HTML File
+  // Export HTML File (current page only)
   const btnExportHTML = document.getElementById('btn-export-html') as HTMLElement;
   btnExportHTML.addEventListener('click', async () => {
-    const currentCode = canvasManager.getContent();
+    const currentCode = codeEditorManager.getCode();
+    projectPages[activePageName] = currentCode;
     try {
-      const result = await window.electronAPI.saveHTML('wingstar-page.html', currentCode);
+      const result = await window.electronAPI.saveHTML(activePageName, currentCode);
       if (result && result.success) {
         confetti({ particleCount: 80, spread: 60 });
       }
@@ -355,33 +493,40 @@ ${pathsMarkup}
     }
   });
 
-  // Export Full Project Folder (HTML + CSS extracted)
+  // Export Full Project Folder (all pages + shared CSS)
   const btnExportProject = document.getElementById('btn-export-project') as HTMLElement;
   btnExportProject.addEventListener('click', async () => {
-    const docText = canvasManager.getContent();
-    
-    // Extract style block contents
+    // Save active page first
+    const currentCode = codeEditorManager.getCode();
+    projectPages[activePageName] = currentCode;
+
+    // Extract CSS from the first page (index.html) style block
     const parser = new DOMParser();
-    const doc = parser.parseFromString(docText, 'text/html');
-    const styleEl = doc.getElementById('project-styles');
+    const indexDoc = parser.parseFromString(projectPages['index.html'] || currentCode, 'text/html');
+    const styleEl = indexDoc.getElementById('project-styles');
     let css = '';
-    
     if (styleEl) {
       css = styleEl.innerHTML.trim();
-      styleEl.remove(); // Remove raw CSS block in output HTML to links style.css instead
     }
 
-    // Output clean HTML
-    const html = '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
+    // Build pages map: remove style block from each page's HTML for cleaner output
+    const cleanPages: { [filename: string]: string } = {};
+    for (const [filename, html] of Object.entries(projectPages)) {
+      const pageDoc = parser.parseFromString(html, 'text/html');
+      const pageStyleEl = pageDoc.getElementById('project-styles');
+      if (pageStyleEl) pageStyleEl.remove();
+      cleanPages[filename] = '<!DOCTYPE html>\n' + pageDoc.documentElement.outerHTML;
+    }
 
     try {
-      const result = await window.electronAPI.exportProject({ html, css });
+      const result = await window.electronAPI.exportProject({ pages: cleanPages, css });
       if (result && result.success) {
         confetti({
           particleCount: 150,
           spread: 80,
           colors: ['#c084fc', '#fbbf24', '#22d3ee']
         });
+        alert(`✅ Exported ${result.pageCount} page(s) to:\n${result.dirPath}`);
       }
     } catch (err: any) {
       alert(`Project Export failed: ${err.message}`);
@@ -391,12 +536,10 @@ ${pathsMarkup}
   // Open Preview in External Web Browser
   const btnPreviewBrowser = document.getElementById('btn-preview-browser') as HTMLElement;
   btnPreviewBrowser.addEventListener('click', async () => {
-    // Generate a temporary file and save, then let user open it
-    const currentCode = canvasManager.getContent();
+    const currentCode = codeEditorManager.getCode();
     try {
       const result = await window.electronAPI.saveHTML('wingstar-preview.html', currentCode);
       if (result && result.success) {
-        // Feedback success
         alert(`Saved preview to: ${result.filePath}\nYou can load this file directly in any browser for live responsive testing.`);
       }
     } catch (err: any) {

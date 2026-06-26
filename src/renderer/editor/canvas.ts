@@ -6,9 +6,17 @@ export class CanvasManager {
   private label: HTMLElement;
   private deleteBtn: HTMLElement;
   private selectedElement: HTMLElement | null = null;
+  private isLiveMode = false;
   
   private onElementSelectedCallback: ((el: HTMLElement | null) => void) | null = null;
   private onCanvasChangedCallback: ((html: string) => void) | null = null;
+
+  // Bound event handlers stored for removal in live mode
+  private boundClickHandler: ((e: MouseEvent) => void) | null = null;
+  private boundDblClickHandler: ((e: MouseEvent) => void) | null = null;
+  private boundDragOverHandler: ((e: DragEvent) => void) | null = null;
+  private boundDragLeaveHandler: ((e: DragEvent) => void) | null = null;
+  private boundDropHandler: ((e: DragEvent) => void) | null = null;
 
   // Resize state
   private isResizing = false;
@@ -76,6 +84,40 @@ export class CanvasManager {
     this.onCanvasChangedCallback = callback;
   }
 
+  /**
+   * Switches between Live mode (native browser interactions) and Design mode (editing).
+   */
+  public setLiveMode(enabled: boolean) {
+    this.isLiveMode = enabled;
+    const doc = this.iframe.contentDocument || this.iframe.contentWindow?.document;
+
+    if (enabled) {
+      // Hide selection overlay
+      this.selectElement(null);
+      // Let iframe receive mouse events natively
+      this.iframe.style.pointerEvents = 'auto';
+      this.iframe.style.cursor = 'default';
+      // Remove design-mode event listeners from iframe doc
+      if (doc) {
+        if (this.boundClickHandler) doc.removeEventListener('click', this.boundClickHandler as any);
+        if (this.boundDblClickHandler) doc.removeEventListener('dblclick', this.boundDblClickHandler as any);
+        if (this.boundDragOverHandler) doc.removeEventListener('dragover', this.boundDragOverHandler as any);
+        if (this.boundDragLeaveHandler) doc.removeEventListener('dragleave', this.boundDragLeaveHandler as any);
+        if (this.boundDropHandler) doc.removeEventListener('drop', this.boundDropHandler as any);
+      }
+    } else {
+      // Restore design mode
+      this.iframe.style.pointerEvents = '';
+      this.iframe.style.cursor = '';
+      // Re-bind iframe events
+      this.bindIframeEvents();
+    }
+  }
+
+  public getLiveMode(): boolean {
+    return this.isLiveMode;
+  }
+
   public selectElement(el: HTMLElement | null) {
     this.selectedElement = el;
     
@@ -127,87 +169,82 @@ export class CanvasManager {
     const doc = this.iframe.contentDocument || this.iframe.contentWindow?.document;
     if (!doc) return;
 
+    // Skip if we're in live mode
+    if (this.isLiveMode) return;
+
+    // Remove any previously-registered handlers first to avoid duplicates
+    if (this.boundClickHandler) doc.removeEventListener('click', this.boundClickHandler as any);
+    if (this.boundDblClickHandler) doc.removeEventListener('dblclick', this.boundDblClickHandler as any);
+    if (this.boundDragOverHandler) doc.removeEventListener('dragover', this.boundDragOverHandler as any);
+    if (this.boundDragLeaveHandler) doc.removeEventListener('dragleave', this.boundDragLeaveHandler as any);
+    if (this.boundDropHandler) doc.removeEventListener('drop', this.boundDropHandler as any);
+
     // Handle clicks for selection
-    doc.addEventListener('click', (e: MouseEvent) => {
+    this.boundClickHandler = (e: MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      
       const target = e.target as HTMLElement;
       this.selectElement(target);
-    });
+    };
+    doc.addEventListener('click', this.boundClickHandler as any);
 
     // Handle double-click for inline text editing
-    doc.addEventListener('dblclick', (e: MouseEvent) => {
+    this.boundDblClickHandler = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      
-      // Only allow editing text-centric tags
       const textTags = ['p', 'span', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'button', 'a', 'li'];
-      if (textTags.includes(target.tagName.toLowerCase()) || target.childNodes.length === 1 && target.childNodes[0].nodeType === Node.TEXT_NODE) {
+      if (textTags.includes(target.tagName.toLowerCase()) || (target.childNodes.length === 1 && target.childNodes[0].nodeType === Node.TEXT_NODE)) {
         target.contentEditable = 'true';
         target.focus();
-        
-        // Selection outline inside iframe when typing
         target.classList.add('editable-element');
-        
-        // Hide global resize overlay during typing
         this.overlay.classList.add('hidden');
-
         const onBlur = () => {
           target.removeAttribute('contenteditable');
           target.classList.remove('editable-element');
-          this.selectElement(target); // re-show overlay
+          this.selectElement(target);
           this.notifyChanges();
           target.removeEventListener('blur', onBlur);
         };
         target.addEventListener('blur', onBlur);
       }
-    });
+    };
+    doc.addEventListener('dblclick', this.boundDblClickHandler as any);
 
     // Sync overlay positioning when scrolling inside iframe
     this.iframe.contentWindow?.addEventListener('scroll', () => {
       this.updateOverlayPosition();
     });
 
-    // Listen for drop events inside iframe document
-    doc.addEventListener('dragover', (e: DragEvent) => {
+    // Drag-over highlight
+    this.boundDragOverHandler = (e: DragEvent) => {
       e.preventDefault();
-      
-      // Visual indicator on target
       const target = e.target as HTMLElement;
       if (target && target.tagName.toLowerCase() !== 'html') {
         target.style.outline = '2px dashed var(--primary)';
       }
-    });
+    };
+    doc.addEventListener('dragover', this.boundDragOverHandler as any);
 
-    doc.addEventListener('dragleave', (e: DragEvent) => {
+    this.boundDragLeaveHandler = (e: DragEvent) => {
       const target = e.target as HTMLElement;
-      if (target) {
-        target.style.outline = '';
-      }
-    });
+      if (target) target.style.outline = '';
+    };
+    doc.addEventListener('dragleave', this.boundDragLeaveHandler as any);
 
-    doc.addEventListener('drop', (e: DragEvent) => {
+    // Drop handler
+    this.boundDropHandler = (e: DragEvent) => {
       e.preventDefault();
-      
       const target = e.target as HTMLElement;
-      if (target) {
-        target.style.outline = '';
-      }
+      if (target) target.style.outline = '';
 
       const componentType = e.dataTransfer?.getData('text/plain');
       if (!componentType || !componentTemplates[componentType]) return;
 
       const template = componentTemplates[componentType].html;
-      
-      // Parse template into HTML node
       const tempDiv = doc.createElement('div');
       tempDiv.innerHTML = template.trim();
       const newElement = tempDiv.firstChild as HTMLElement;
 
-      // Drop targeting logic: append to container, or insert adjacent
       if (target && target.tagName.toLowerCase() !== 'body' && target.tagName.toLowerCase() !== 'html') {
-        // If dropping on a card, footer, section etc., append it inside.
-        // Otherwise, insert it after the target element.
         const containerTags = ['section', 'div', 'header', 'footer', 'main', 'aside'];
         if (containerTags.includes(target.tagName.toLowerCase())) {
           target.appendChild(newElement);
@@ -220,7 +257,8 @@ export class CanvasManager {
 
       this.selectElement(newElement);
       this.notifyChanges();
-    });
+    };
+    doc.addEventListener('drop', this.boundDropHandler as any);
   }
 
   private setupResizeListeners() {

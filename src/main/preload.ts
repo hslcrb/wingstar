@@ -11,16 +11,18 @@ export interface ElectronAPI {
     success: boolean;
     filePath: string;
   } | null>;
-  exportProject: (html: string, css: string) => Promise<{
+  exportProject: (payload: { pages: { [filename: string]: string }; css: string }) => Promise<{
     success: boolean;
     dirPath: string;
+    pageCount: number;
   } | null>;
 }
 
 const api: ElectronAPI = {
   openFile: () => ipcRenderer.invoke('dialog:openFile'),
   saveHTML: (defaultName: string, content: string) => ipcRenderer.invoke('dialog:saveHTML', { defaultName, content }),
-  exportProject: (html: string, css: string) => ipcRenderer.invoke('dialog:exportProject', { html, css }),
+  exportProject: (payload: { pages: { [filename: string]: string }; css: string }) =>
+    ipcRenderer.invoke('dialog:exportProject', payload),
 };
 
 contextBridge.exposeInMainWorld('electronAPI', api);

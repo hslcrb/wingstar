@@ -97,8 +97,8 @@ app.whenReady().then(() => {
     }
   });
 
-  // Handler for saving project bundles (HTML + CSS)
-  ipcMain.handle('dialog:exportProject', async (_, { html, css }: { html: string; css: string }) => {
+  // Handler for saving project bundles (multiple HTML pages + shared CSS)
+  ipcMain.handle('dialog:exportProject', async (_, { pages, css }: { pages: { [filename: string]: string }; css: string }) => {
     if (!mainWindow) return null;
 
     const result = await dialog.showOpenDialog(mainWindow, {
@@ -112,19 +112,21 @@ app.whenReady().then(() => {
 
     const dirPath = result.filePaths[0];
     try {
-      const htmlPath = path.join(dirPath, 'index.html');
       const cssPath = path.join(dirPath, 'style.css');
-
-      // Inject standard link to style.css in head if not present
-      let finalHtml = html;
-      if (!html.includes('style.css')) {
-        finalHtml = html.replace('</head>', '  <link rel="stylesheet" href="style.css">\n</head>');
-      }
-
-      fs.writeFileSync(htmlPath, finalHtml, 'utf-8');
       fs.writeFileSync(cssPath, css, 'utf-8');
 
-      return { success: true, dirPath };
+      // Write each HTML page
+      for (const [filename, html] of Object.entries(pages)) {
+        const htmlPath = path.join(dirPath, filename);
+        // Inject standard link to style.css in head if not present
+        let finalHtml = html;
+        if (!html.includes('style.css')) {
+          finalHtml = html.replace('</head>', '  <link rel="stylesheet" href="style.css">\n</head>');
+        }
+        fs.writeFileSync(htmlPath, finalHtml, 'utf-8');
+      }
+
+      return { success: true, dirPath, pageCount: Object.keys(pages).length };
     } catch (error: any) {
       console.error('Failed to export project:', error);
       throw new Error(`Failed to export project: ${error.message}`);
