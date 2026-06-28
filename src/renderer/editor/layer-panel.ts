@@ -8,12 +8,16 @@ interface LayerItem {
   element: HTMLElement;
 }
 
+type MultiSelectCallback = (els: HTMLElement[]) => void;
+
 export class LayerPanel {
   private container: HTMLElement;
   private statusBadge: HTMLElement;
   private items: LayerItem[] = [];
   private selectedId: string | null = null;
+  private dragId: string | null = null;
   private onSelect: (el: HTMLElement | null) => void;
+  private onMultiSelect: MultiSelectCallback;
   private onReorder: () => void;
 
   constructor(
@@ -21,12 +25,14 @@ export class LayerPanel {
     badgeId: string,
     callbacks: {
       onSelect: (el: HTMLElement | null) => void;
+      onMultiSelect: MultiSelectCallback;
       onReorder: () => void;
     }
   ) {
     this.container = document.getElementById(containerId) as HTMLElement;
     this.statusBadge = document.getElementById(badgeId) as HTMLElement;
     this.onSelect = callbacks.onSelect;
+    this.onMultiSelect = callbacks.onMultiSelect;
     this.onReorder = callbacks.onReorder;
   }
 
@@ -133,9 +139,59 @@ export class LayerPanel {
         </div>
       `;
 
+      el.draggable = true;
+      el.addEventListener('dragstart', (e) => {
+        this.dragId = item.id;
+        el.classList.add('dragging');
+        e.dataTransfer?.setData('text/plain', item.id);
+        e.dataTransfer!.effectAllowed = 'move';
+      });
+      el.addEventListener('dragend', () => {
+        el.classList.remove('dragging');
+        this.dragId = null;
+        this.container.querySelectorAll('.drop-target').forEach(c => c.classList.remove('drop-target'));
+      });
+      el.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer!.dropEffect = 'move';
+        this.container.querySelectorAll('.drop-target').forEach(c => c.classList.remove('drop-target'));
+        el.classList.add('drop-target');
+      });
+      el.addEventListener('dragleave', () => {
+        el.classList.remove('drop-target');
+      });
+      el.addEventListener('drop', (e) => {
+        e.preventDefault();
+        el.classList.remove('drop-target');
+        const fromId = e.dataTransfer?.getData('text/plain');
+        if (!fromId || fromId === item.id) return;
+        const fromItem = this.items.find(i => i.id === fromId);
+        const toItem = this.items.find(i => i.id === item.id);
+        if (!fromItem || !toItem) return;
+        const parent = toItem.element.parentNode;
+        if (!parent) return;
+        const siblings = Array.from(parent.children) as HTMLElement[];
+        const toIdx = siblings.indexOf(toItem.element);
+        parent.insertBefore(fromItem.element, siblings[toIdx + 1] || null);
+        this.onReorder();
+        this.refresh(fromItem.element.ownerDocument as Document, fromItem.element);
+      });
+
       el.addEventListener('click', (e) => {
         const action = (e.target as HTMLElement).closest('[data-action]');
         if (action) return;
+        if (e.shiftKey) {
+          el.classList.toggle('selected');
+          const selected = this.container.querySelectorAll('.layer-tree-item.selected');
+          const els: HTMLElement[] = [];
+          selected.forEach(s => {
+            const id = s.getAttribute('data-layer-id');
+            const found = this.items.find(i => i.id === id);
+            if (found) els.push(found.element);
+          });
+          if (els.length > 0) this.onMultiSelect(els);
+          return;
+        }
         this.container.querySelectorAll('.layer-tree-item').forEach(c => c.classList.remove('selected'));
         el.classList.add('selected');
         this.onSelect(item.element);

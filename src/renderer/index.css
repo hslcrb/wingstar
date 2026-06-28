@@ -573,6 +573,16 @@ h1, h2, h3, h4 {
   border-left: 2px solid var(--primary);
 }
 
+.layer-tree-item.dragging {
+  opacity: 0.4;
+}
+
+.layer-tree-item.drop-target {
+  outline: 2px solid #4fc3f7;
+  outline-offset: -2px;
+  background: rgba(79, 195, 247, 0.1);
+}
+
 .layer-info {
   display: flex;
   align-items: center;
@@ -736,11 +746,6 @@ h1, h2, h3, h4 {
   display: block;
 }
 
-.canvas-wrapper.live-mode {
-  box-shadow: 0 20px 50px rgba(34, 211, 238, 0.2);
-  outline: 2px solid var(--cyan);
-  outline-offset: 2px;
-}
 
 /* WYSIWYG Selection & Handles Overlay (rendered on top of frame wrapper) */
 .selection-overlay {
@@ -1099,12 +1104,6 @@ h1, h2, h3, h4 {
   box-shadow: 0 0 0 3px var(--primary), 0 20px 50px rgba(139, 92, 246, 0.3);
 }
 
-/* Live Mode Toggle Button Active State */
-.toggle-btn.live-active {
-  color: var(--cyan);
-  background: rgba(34, 211, 238, 0.1);
-  border-color: rgba(34, 211, 238, 0.3);
-}
 
 /* SVG Properties Group Highlighting */
 #group-svg-properties {
@@ -1229,6 +1228,25 @@ h1, h2, h3, h4 {
 }
 
 /* Zoom Controls */
+.toolbar-action-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  width: 30px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.toolbar-action-btn:hover {
+  color: var(--text-main);
+  background: var(--bg-hover);
+}
+
 .zoom-controls {
   display: flex;
   align-items: center;
@@ -1265,6 +1283,123 @@ h1, h2, h3, h4 {
   min-width: 36px;
   text-align: center;
   font-family: var(--font-mono);
+}
+
+/* Shortcuts Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-overlay.hidden {
+  display: none;
+}
+
+.modal-content {
+  background: var(--bg-darker);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  min-width: 320px;
+  max-width: 460px;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-color);
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.modal-close {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.4rem;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.modal-close:hover {
+  color: var(--text-main);
+}
+
+.modal-body {
+  padding: 16px 20px;
+}
+
+.shortcuts-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.shortcuts-table td {
+  padding: 5px 0;
+}
+
+.shortcuts-table td:first-child {
+  color: var(--primary);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  width: 40%;
+}
+
+.shortcuts-table td:last-child {
+  color: var(--text-main);
+}
+
+/* Context Menu */
+.context-menu {
+  background: #2a2a2e;
+  border: 1px solid #3a3a3f;
+  border-radius: 8px;
+  padding: 4px;
+  min-width: 180px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  font-size: 0.8rem;
+}
+
+.context-menu-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-main);
+  transition: background 0.1s;
+  gap: 24px;
+}
+
+.context-menu-item:hover {
+  background: var(--primary);
+  color: #fff;
+}
+
+.context-menu-item .cm-shortcut {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-family: var(--font-mono);
+}
+
+.context-menu-item:hover .cm-shortcut {
+  color: rgba(255,255,255,0.7);
+}
+
+.context-menu-separator {
+  height: 1px;
+  background: var(--border-color);
+  margin: 4px 8px;
 }
 
 /* Drawing Tool Buttons */

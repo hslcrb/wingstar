@@ -9,6 +9,7 @@ import { DrawingToolManager, DrawMode } from './editor/drawing-tool';
 import { alignElement, AlignMode } from './editor/alignment';
 import { LayerPanel } from './editor/layer-panel';
 import { UndoManager } from './editor/undo-manager';
+import { ContextMenu } from './editor/context-menu';
 import { defaultHTML } from './editor/templates';
 import confetti from 'canvas-confetti';
 import { ElectronAPI } from '../main/preload';
@@ -174,39 +175,10 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // ─────────────────────────────────────────────
-  // 8. Live / Design Mode Toggle
+  // 8. Unified Mode — always design + Ctrl+click for native
   // ─────────────────────────────────────────────
-  const btnToggleLive = document.getElementById('btn-toggle-live') as HTMLElement;
   const canvasWrapper = document.getElementById('canvas-wrapper') as HTMLElement;
-
-  btnToggleLive.addEventListener('click', () => {
-    const isCurrentlyLive = canvasManager.getLiveMode();
-    const willBeLive = !isCurrentlyLive;
-
-    canvasManager.setLiveMode(willBeLive);
-
-    if (willBeLive) {
-      btnToggleLive.classList.add('live-active');
-      btnToggleLive.innerHTML = `
-        <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none">
-          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-        </svg>
-        Live
-      `;
-      canvasWrapper.classList.add('live-mode');
-    } else {
-      btnToggleLive.classList.remove('live-active');
-      btnToggleLive.innerHTML = `
-        <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none">
-          <circle cx="12" cy="12" r="10"></circle>
-          <polygon points="10 8 16 12 10 16 10 8" fill="currentColor" stroke="none"></polygon>
-        </svg>
-        Design
-      `;
-      canvasWrapper.classList.remove('live-mode');
-    }
-  });
+  // Always in design mode; Ctrl+click passes through to iframe for links/forms
 
   // ─────────────────────────────────────────────
   // 9. Multi-Page Project Management
@@ -437,12 +409,18 @@ ${pathsMarkup}
   // ─────────────────────────────────────────────
   // 11. Layer Panel (Universal DOM Tree)
   // ─────────────────────────────────────────────
+  let multiSelectedElements: HTMLElement[] = [];
   const layerPanel = new LayerPanel('vector-layers-tree', 'vector-status', {
-    onSelect: (el) => canvasManager.selectElement(el),
+    onSelect: (el) => { canvasManager.selectElement(el); multiSelectedElements = []; },
+    onMultiSelect: (els) => {
+      multiSelectedElements = els;
+      if (els.length > 0) canvasManager.selectElement(els[0]);
+    },
     onReorder: () => {
       const html = canvasManager.getContent();
       projectPages[activePageName] = html;
       codeEditorManager.setCode(html);
+      pushUndoState();
     }
   });
 
@@ -649,11 +627,203 @@ ${pathsMarkup}
   }, { passive: false });
 
   // ─────────────────────────────────────────────
-  // 17. Keyboard Shortcuts
+  // 17. Copy/Paste buffer
+  // ─────────────────────────────────────────────
+  let clipboardHTML: string | null = null;
+
+  // ─────────────────────────────────────────────
+  // 18. Context Menu
+  // ─────────────────────────────────────────────
+  const contextMenu = new ContextMenu({
+    copy: () => {
+      const sel = canvasManager.getSelectedElement();
+      if (sel) clipboardHTML = sel.outerHTML;
+    },
+    paste: () => {
+      if (!clipboardHTML) return;
+      const iframe = document.getElementById('editor-frame') as HTMLIFrameElement;
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!doc) return;
+      const temp = doc.createElement('div');
+      temp.innerHTML = clipboardHTML;
+      const clone = temp.firstElementChild as HTMLElement;
+      if (!clone) return;
+      doc.body.appendChild(clone);
+      canvasManager.selectElement(clone);
+      const html = canvasManager.getContent();
+      projectPages[activePageName] = html;
+      codeEditorManager.setCode(html);
+      pushUndoState();
+    },
+    delete: () => {
+      const sel = canvasManager.getSelectedElement();
+      if (sel && sel.parentNode) {
+        sel.remove();
+        canvasManager.selectElement(null);
+        const html = canvasManager.getContent();
+        projectPages[activePageName] = html;
+        codeEditorManager.setCode(html);
+        pushUndoState();
+      }
+    },
+    group: () => {
+      const sel = canvasManager.getSelectedElement();
+      if (!sel || !sel.parentNode) return;
+      const iframe = document.getElementById('editor-frame') as HTMLIFrameElement;
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!doc) return;
+      const group = doc.createElement('div');
+      group.className = 'wingstar-group';
+      group.style.cssText = 'position:relative;border:1px dashed rgba(139,92,246,0.3);padding:4px;';
+      sel.parentNode.insertBefore(group, sel);
+      group.appendChild(sel);
+      canvasManager.selectElement(group);
+      const html = canvasManager.getContent();
+      projectPages[activePageName] = html;
+      codeEditorManager.setCode(html);
+      pushUndoState();
+    },
+    ungroup: () => {
+      const sel = canvasManager.getSelectedElement();
+      if (!sel || sel.className !== 'wingstar-group' || !sel.parentNode) return;
+      const parent = sel.parentNode;
+      const children = Array.from(sel.children);
+      children.forEach(child => parent.insertBefore(child, sel));
+      sel.remove();
+      if (children.length > 0) canvasManager.selectElement(children[0] as HTMLElement);
+      else canvasManager.selectElement(null);
+      const html = canvasManager.getContent();
+      projectPages[activePageName] = html;
+      codeEditorManager.setCode(html);
+      pushUndoState();
+    },
+    align: (mode: string) => {
+      const el = canvasManager.getSelectedElement();
+      if (!el) return;
+      alignElement(el, mode as AlignMode);
+      canvasManager.updateOverlayPosition();
+      const html = canvasManager.getContent();
+      projectPages[activePageName] = html;
+      codeEditorManager.setCode(html);
+      pushUndoState();
+    },
+  });
+
+  // Bind context menu via canvas callback
+  canvasManager.onContextMenu((e: MouseEvent, el: HTMLElement | null) => {
+    if (el) canvasManager.selectElement(el);
+    contextMenu.show(e.clientX, e.clientY, canvasManager.getSelectedElement());
+  });
+
+  // ─────────────────────────────────────────────
+  // 19. Project Save / Load (HTML-only format)
+  // ─────────────────────────────────────────────
+  function serializeProject(): string {
+    const current = canvasManager.getContent();
+    // Embed all pages in a script tag within the HTML
+    const pagesData = Object.entries(projectPages).map(([name, html]) => {
+      return `<!-- wingstar-page: ${name} -->\n${html}\n<!-- endwingstar-page -->`;
+    }).join('\n');
+    // Strip the DOCTYPE from current content, use as main body
+    const mainHtml = current.replace('<!DOCTYPE html>\n', '');
+    return `<!DOCTYPE html>\n<!-- wingstar-project -->\n${pagesData}\n<!-- endwingstar-project -->\n${mainHtml}`;
+  }
+
+  function deserializeProject(fullHtml: string) {
+    const pages: { [name: string]: string } = {};
+    let mainContent = fullHtml;
+
+    // Extract embedded pages from HTML comments
+    const pageRegex = /<!-- wingstar-page:\s*([^\s-]+)\s*-->([\s\S]*?)<!--\s*endwingstar-page\s*-->/g;
+    let match;
+    let firstPageName: string | null = null;
+    while ((match = pageRegex.exec(fullHtml)) !== null) {
+      const name = match[1].trim();
+      const html = match[2].trim();
+      pages[name] = html;
+      if (!firstPageName) firstPageName = name;
+      // Remove from main content
+      mainContent = mainContent.replace(match[0], '');
+    }
+
+    // Also strip project markers
+    mainContent = mainContent.replace(/<!--\s*wingstar-project\s*-->/g, '').replace(/<!--\s*endwingstar-project\s*-->/g, '').trim();
+
+    if (Object.keys(pages).length === 0) {
+      // Not a WingStar project file; treat entire content as a single page
+      pages['Page 1'] = mainContent;
+    }
+
+    return { pages, mainContent, firstPageName };
+  }
+
+  async function saveProject() {
+    const serialized = serializeProject();
+    const result = await window.electronAPI.saveHTML('index.html', serialized);
+    if (result?.success) {
+      showToast(`저장 완료: ${result.filePath}`, 'success');
+    } else {
+      showToast('저장 취소됨', 'error');
+    }
+  }
+
+  async function openProject() {
+    const result = await window.electronAPI.openFile();
+    if (!result || !result.content) return;
+
+    const { pages, firstPageName } = deserializeProject(result.content);
+    projectPages = {};
+    activePageName = '';
+
+    let first = true;
+    for (const [name, html] of Object.entries(pages)) {
+      projectPages[name] = html;
+      if (first || name === firstPageName) {
+        activePageName = name;
+        canvasManager.setContent(html);
+        codeEditorManager.setCode(html);
+        first = false;
+      }
+    }
+
+    if (activePageName) refreshPageTabs();
+    pushUndoState();
+    showToast(`열기 완료: ${Object.keys(pages).length}개 페이지`, 'success');
+  }
+
+  document.getElementById('btn-save')?.addEventListener('click', saveProject);
+  document.getElementById('btn-open')?.addEventListener('click', openProject);
+
+  // ─────────────────────────────────────────────
+  // 20. Shortcuts Help Modal
+  // ─────────────────────────────────────────────
+  const shortcutsModal = document.getElementById('shortcuts-modal') as HTMLElement;
+  document.getElementById('btn-shortcuts')?.addEventListener('click', () => {
+    shortcutsModal.classList.remove('hidden');
+  });
+  document.getElementById('btn-close-shortcuts')?.addEventListener('click', () => {
+    shortcutsModal.classList.add('hidden');
+  });
+  shortcutsModal.addEventListener('click', (e) => {
+    if (e.target === shortcutsModal) shortcutsModal.classList.add('hidden');
+  });
+
+  // ─────────────────────────────────────────────
+  // 21. Keyboard Shortcuts
   // ─────────────────────────────────────────────
   document.addEventListener('keydown', (e) => {
     const ctrl = e.ctrlKey || e.metaKey;
+    const active = document.activeElement;
+    const isInputFocused = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT' || active.isContentEditable);
 
+    if (ctrl && e.key === 's' && !isInputFocused) {
+      e.preventDefault();
+      saveProject();
+    }
+    if (ctrl && e.key === 'o' && !isInputFocused) {
+      e.preventDefault();
+      openProject();
+    }
     if (ctrl && e.key === 'z' && !e.shiftKey) {
       e.preventDefault();
       undoManager.undo();
@@ -662,9 +832,86 @@ ${pathsMarkup}
       e.preventDefault();
       undoManager.redo();
     }
-    if ((e.key === 'Delete' || e.key === 'Backspace') && !ctrl) {
-      const active = document.activeElement;
-      if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT' || active.isContentEditable)) return;
+    if (ctrl && e.key === 'c' && !isInputFocused) {
+      e.preventDefault();
+      const sel = canvasManager.getSelectedElement();
+      if (sel) {
+        clipboardHTML = sel.outerHTML;
+      }
+    }
+    if (ctrl && e.key === 'g' && !e.shiftKey && !isInputFocused) {
+      e.preventDefault();
+      // Group: wrap selected element in a container div
+      const sel = canvasManager.getSelectedElement();
+      if (!sel || !sel.parentNode) return;
+      const iframe = document.getElementById('editor-frame') as HTMLIFrameElement;
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!doc) return;
+      const group = doc.createElement('div');
+      group.className = 'wingstar-group';
+      group.style.cssText = 'position:relative;border:1px dashed rgba(139,92,246,0.3);padding:4px;';
+      sel.parentNode.insertBefore(group, sel);
+      group.appendChild(sel);
+      canvasManager.selectElement(group);
+      const html = canvasManager.getContent();
+      projectPages[activePageName] = html;
+      codeEditorManager.setCode(html);
+      pushUndoState();
+    }
+    if (ctrl && e.key === 'g' && e.shiftKey && !isInputFocused) {
+      e.preventDefault();
+      // Ungroup: extract children of group
+      const sel = canvasManager.getSelectedElement();
+      if (!sel || sel.className !== 'wingstar-group' || !sel.parentNode) return;
+      const parent = sel.parentNode;
+      const children = Array.from(sel.children);
+      children.forEach(child => parent.insertBefore(child, sel));
+      sel.remove();
+      if (children.length > 0) {
+        canvasManager.selectElement(children[0] as HTMLElement);
+      } else {
+        canvasManager.selectElement(null);
+      }
+      const html = canvasManager.getContent();
+      projectPages[activePageName] = html;
+      codeEditorManager.setCode(html);
+      pushUndoState();
+    }
+    if (ctrl && e.key === 'a' && !isInputFocused) {
+      e.preventDefault();
+      const iframe = document.getElementById('editor-frame') as HTMLIFrameElement;
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!doc || !doc.body) return;
+      // Select the last meaningful child of body
+      const children = Array.from(doc.body.children).filter((c: Element) => {
+        const tag = c.tagName.toLowerCase();
+        return tag !== 'style' && tag !== 'script';
+      }) as HTMLElement[];
+      if (children.length > 0) {
+        const last = children[children.length - 1];
+        // Multi-select all children visually via layer panel
+        multiSelectedElements = children;
+        canvasManager.selectElement(last);
+      }
+    }
+    if (ctrl && e.key === 'v' && !isInputFocused) {
+      e.preventDefault();
+      if (!clipboardHTML) return;
+      const iframe = document.getElementById('editor-frame') as HTMLIFrameElement;
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!doc) return;
+      const temp = doc.createElement('div');
+      temp.innerHTML = clipboardHTML;
+      const clone = temp.firstElementChild as HTMLElement;
+      if (!clone) return;
+      doc.body.appendChild(clone);
+      canvasManager.selectElement(clone);
+      const html = canvasManager.getContent();
+      projectPages[activePageName] = html;
+      codeEditorManager.setCode(html);
+      pushUndoState();
+    }
+    if ((e.key === 'Delete' || e.key === 'Backspace') && !ctrl && !isInputFocused) {
       e.preventDefault();
       const sel = canvasManager.getSelectedElement();
       if (sel && sel.parentNode) {
