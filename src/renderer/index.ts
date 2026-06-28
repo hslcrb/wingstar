@@ -621,7 +621,35 @@ ${pathsMarkup}
   initIframeDoc();
 
   // ─────────────────────────────────────────────
-  // 15. Keyboard Shortcuts
+  // 16. Canvas Zoom
+  // ─────────────────────────────────────────────
+  let zoomLevel = 1;
+  const MIN_ZOOM = 0.25;
+    const MAX_ZOOM = 4;
+    const ZOOM_STEP = 0.1;
+    const zoomLevelEl = document.getElementById('zoom-level') as HTMLElement;
+
+  function applyZoom(level: number) {
+    zoomLevel = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, level));
+    canvasWrapper.style.transform = `scale(${zoomLevel})`;
+    canvasWrapper.style.transformOrigin = 'center center';
+    zoomLevelEl.textContent = `${Math.round(zoomLevel * 100)}%`;
+    canvasManager.updateOverlayPosition();
+  }
+
+  document.getElementById('btn-zoom-in')?.addEventListener('click', () => applyZoom(zoomLevel + ZOOM_STEP));
+  document.getElementById('btn-zoom-out')?.addEventListener('click', () => applyZoom(zoomLevel - ZOOM_STEP));
+  document.getElementById('btn-zoom-reset')?.addEventListener('click', () => applyZoom(1));
+
+  canvasWrapper.addEventListener('wheel', (e) => {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      applyZoom(zoomLevel + (e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP));
+    }
+  }, { passive: false });
+
+  // ─────────────────────────────────────────────
+  // 17. Keyboard Shortcuts
   // ─────────────────────────────────────────────
   document.addEventListener('keydown', (e) => {
     const ctrl = e.ctrlKey || e.metaKey;

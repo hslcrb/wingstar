@@ -1228,6 +1228,45 @@ h1, h2, h3, h4 {
   margin: 0 2px;
 }
 
+/* Zoom Controls */
+.zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--bg-input);
+  padding: 2px 6px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.zoom-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.15s ease;
+}
+
+.zoom-btn:hover {
+  color: var(--text-main);
+  background: var(--bg-hover);
+}
+
+.zoom-level {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  min-width: 36px;
+  text-align: center;
+  font-family: var(--font-mono);
+}
+
 /* Drawing Tool Buttons */
 .draw-tool-group {
   display: flex;
