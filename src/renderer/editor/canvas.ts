@@ -1,4 +1,5 @@
 import { componentTemplates } from './templates';
+import { calcSnap, renderGuides, clearGuides } from './smart-guide';
 
 export type DrawMode = 'select' | 'rect' | 'ellipse' | 'line';
 
@@ -406,15 +407,33 @@ export class CanvasManager {
       this.label.style.cursor = 'grabbing';
       const selected = this.selectedElement;
 
-      // Save original styles and disable pointer-events to perform hit testing
+      // Make element absolutely positioned for free-form dragging
+      const wasAbsolute = selected.style.position === 'absolute';
+      if (!wasAbsolute) {
+        const rect = selected.getBoundingClientRect();
+        const iframeRect = this.iframe.getBoundingClientRect();
+        selected.style.position = 'absolute';
+        selected.style.left = `${rect.left - iframeRect.left}px`;
+        selected.style.top = `${rect.top - iframeRect.top}px`;
+        selected.style.width = `${rect.width}px`;
+        selected.style.margin = '0';
+      }
+
       const originalPointerEvents = selected.style.pointerEvents;
       selected.style.pointerEvents = 'none';
 
-      let lastHoveredEl: HTMLElement | null = null;
-      let lastPlacement: 'before' | 'after' | 'append' = 'append';
-
       const iframeDoc = this.iframe.contentDocument || this.iframe.contentWindow?.document;
       if (!iframeDoc) return;
+
+      const iframeStartRect = this.iframe.getBoundingClientRect();
+      const startMouseX = e.clientX;
+      const startMouseY = e.clientY;
+      const startLeft = parseFloat(selected.style.left) || 0;
+      const startTop = parseFloat(selected.style.top) || 0;
+
+      let lastHoveredEl: HTMLElement | null = null;
+      let lastPlacement: 'before' | 'after' | 'append' = 'append';
+      let isReparentMode = false;
 
       // Create a visual indicator element inside iframe for drop placement
       let dropIndicator = iframeDoc.getElementById('wingstar-drop-indicator') as HTMLElement;
@@ -433,49 +452,92 @@ export class CanvasManager {
         `;
       }
 
+      function getAllSnapTargets(): HTMLElement[] {
+        const all = Array.from(iframeDoc.body.querySelectorAll('*')) as HTMLElement[];
+        return all.filter(el => {
+          if (el === selected || el === iframeDoc.body || el === iframeDoc.documentElement) return false;
+          if (el.tagName === 'STYLE' || el.tagName === 'SCRIPT') return false;
+          if (el.getAttribute('data-locked') === 'true') return false;
+          const r = el.getBoundingClientRect();
+          return r.width > 0 && r.height > 0;
+        });
+      }
+
       const onMouseMove = (moveEvent: MouseEvent) => {
         const iframeRect = this.iframe.getBoundingClientRect();
-        
+        const deltaX = moveEvent.clientX - startMouseX;
+        const deltaY = moveEvent.clientY - startMouseY;
+
         let clientX = moveEvent.clientX;
         let clientY = moveEvent.clientY;
-
-        // If mouse is inside parent window context, translate by iframe bounds
         if (moveEvent.currentTarget === window) {
-          clientX = moveEvent.clientX - iframeRect.left;
-          clientY = moveEvent.clientY - iframeRect.top;
+          clientX -= iframeRect.left;
+          clientY -= iframeRect.top;
         }
 
-        const hovered = iframeDoc.elementFromPoint(clientX, clientY) as HTMLElement | null;
+        // Reparent mode when Shift is held
+        if (moveEvent.shiftKey) {
+          isReparentMode = true;
+          selected.style.opacity = '0.5';
 
-        if (hovered && hovered !== iframeDoc.body && hovered !== iframeDoc.documentElement && !selected.contains(hovered)) {
-          lastHoveredEl = hovered;
-          
-          const hoveredRect = hovered.getBoundingClientRect();
-          const relativeY = clientY - hoveredRect.top;
-          
-          const containerTags = ['section', 'div', 'header', 'footer', 'main', 'aside', 'article'];
-          const isContainer = containerTags.includes(hovered.tagName.toLowerCase());
+          // Get the element under cursor
+          const hovered = iframeDoc.elementFromPoint(clientX, clientY) as HTMLElement | null;
+          if (hovered && hovered !== iframeDoc.body && hovered !== iframeDoc.documentElement && !selected.contains(hovered)) {
+            lastHoveredEl = hovered;
+            const hoveredRect = hovered.getBoundingClientRect();
+            const relativeY = clientY - hoveredRect.top;
+            
+            const containerTags = ['section', 'div', 'header', 'footer', 'main', 'aside', 'article'];
+            const isContainer = containerTags.includes(hovered.tagName.toLowerCase());
 
-          // Decide placement based on mouse position relative to hovered element bounds
-          if (isContainer && relativeY > hoveredRect.height * 0.25 && relativeY < hoveredRect.height * 0.75) {
-            lastPlacement = 'append';
-            hovered.style.outline = '2px dashed #8b5cf6';
-            if (dropIndicator.parentNode) dropIndicator.remove();
-          } else {
-            // Edge areas: insert before or after sibling
-            if (relativeY < hoveredRect.height * 0.5) {
-              lastPlacement = 'before';
-              hovered.parentNode?.insertBefore(dropIndicator, hovered);
+            if (isContainer && relativeY > hoveredRect.height * 0.25 && relativeY < hoveredRect.height * 0.75) {
+              lastPlacement = 'append';
+              hovered.style.outline = '2px dashed #8b5cf6';
+              if (dropIndicator.parentNode) dropIndicator.remove();
             } else {
-              lastPlacement = 'after';
-              hovered.parentNode?.insertBefore(dropIndicator, hovered.nextSibling);
+              if (relativeY < hoveredRect.height * 0.5) {
+                lastPlacement = 'before';
+                hovered.parentNode?.insertBefore(dropIndicator, hovered);
+              } else {
+                lastPlacement = 'after';
+                hovered.parentNode?.insertBefore(dropIndicator, hovered.nextSibling);
+              }
+              hovered.style.outline = '';
             }
-            hovered.style.outline = '';
+          } else {
+            if (dropIndicator.parentNode) dropIndicator.remove();
+            if (lastHoveredEl) lastHoveredEl.style.outline = '';
+            lastHoveredEl = null;
           }
         } else {
+          isReparentMode = false;
+          selected.style.opacity = '1';
           if (dropIndicator.parentNode) dropIndicator.remove();
           if (lastHoveredEl) lastHoveredEl.style.outline = '';
           lastHoveredEl = null;
+
+          // Freeform drag with smart snap
+          let newLeft = startLeft + deltaX;
+          let newTop = startTop + deltaY;
+
+          // Smart guide snapping
+          clearGuides(this.overlay);
+          const iframeBodyRect = iframeDoc.body.getBoundingClientRect();
+          const fakeRect = new DOMRect(
+            iframeRect.left + newLeft,
+            iframeRect.top + newTop,
+            selected.getBoundingClientRect().width,
+            selected.getBoundingClientRect().height
+          );
+          const snapResult = calcSnap(fakeRect, getAllSnapTargets(), iframeBodyRect);
+          if (snapResult.snapX !== null) newLeft += snapResult.snapX;
+          if (snapResult.snapY !== null) newTop += snapResult.snapY;
+          if (snapResult.guides.length > 0) {
+            renderGuides(snapResult.guides, this.overlay);
+          }
+
+          selected.style.left = `${Math.max(0, newLeft)}px`;
+          selected.style.top = `${Math.max(0, newTop)}px`;
         }
         
         this.updateOverlayPosition();
@@ -484,13 +546,13 @@ export class CanvasManager {
       const onMouseUp = () => {
         this.label.style.cursor = 'grab';
         selected.style.pointerEvents = originalPointerEvents;
+        selected.style.opacity = '';
+        clearGuides(this.overlay);
 
-        // Clean up temporary UI styles
         if (dropIndicator.parentNode) dropIndicator.remove();
         if (lastHoveredEl) lastHoveredEl.style.outline = '';
 
-        // Execute visual DOM node repositioning
-        if (lastHoveredEl) {
+        if (isReparentMode && lastHoveredEl) {
           if (lastPlacement === 'append') {
             lastHoveredEl.appendChild(selected);
           } else if (lastPlacement === 'before') {
@@ -498,8 +560,6 @@ export class CanvasManager {
           } else if (lastPlacement === 'after') {
             lastHoveredEl.parentNode?.insertBefore(selected, lastHoveredEl.nextSibling);
           }
-
-          // Strip absolute layout attributes to protect flow-based responsive code
           selected.style.position = '';
           selected.style.left = '';
           selected.style.top = '';
@@ -509,16 +569,18 @@ export class CanvasManager {
           
           this.selectElement(selected);
           this.notifyChanges();
+        } else if (!isReparentMode) {
+          // Ensure element stays absolutely positioned
+          selected.style.position = 'absolute';
+          this.notifyChanges();
         }
 
-        // Unbind event listeners
         window.removeEventListener('mousemove', onMouseMove);
         window.removeEventListener('mouseup', onMouseUp);
         iframeDoc.removeEventListener('mousemove', onMouseMove);
         iframeDoc.removeEventListener('mouseup', onMouseUp);
       };
 
-      // Bind to both windows for flawless event capturing across iframe boundaries
       window.addEventListener('mousemove', onMouseMove);
       window.addEventListener('mouseup', onMouseUp);
       iframeDoc.addEventListener('mousemove', onMouseMove);
