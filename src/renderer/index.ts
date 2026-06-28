@@ -824,7 +824,21 @@ ${pathsMarkup}
   document.getElementById('btn-open')?.addEventListener('click', openProject);
 
   // ─────────────────────────────────────────────
-  // 20. Keyboard Shortcuts
+  // 20. Shortcuts Help Modal
+  // ─────────────────────────────────────────────
+  const shortcutsModal = document.getElementById('shortcuts-modal') as HTMLElement;
+  document.getElementById('btn-shortcuts')?.addEventListener('click', () => {
+    shortcutsModal.classList.remove('hidden');
+  });
+  document.getElementById('btn-close-shortcuts')?.addEventListener('click', () => {
+    shortcutsModal.classList.add('hidden');
+  });
+  shortcutsModal.addEventListener('click', (e) => {
+    if (e.target === shortcutsModal) shortcutsModal.classList.add('hidden');
+  });
+
+  // ─────────────────────────────────────────────
+  // 21. Keyboard Shortcuts
   // ─────────────────────────────────────────────
   document.addEventListener('keydown', (e) => {
     const ctrl = e.ctrlKey || e.metaKey;
@@ -891,6 +905,11 @@ ${pathsMarkup}
       projectPages[activePageName] = html;
       codeEditorManager.setCode(html);
       pushUndoState();
+    }
+    if (ctrl && e.key === 'd' && !isInputFocused) {
+      e.preventDefault();
+      const btn = document.getElementById('btn-toggle-live') as HTMLButtonElement;
+      if (btn) btn.click();
     }
     if (ctrl && e.key === 'a' && !isInputFocused) {
       e.preventDefault();
