@@ -77,6 +77,21 @@
       </div>
 
       <div class="toolbar-toggles">
+        <div class="draw-tool-group" id="draw-tool-group">
+          <button class="draw-tool-btn active" data-draw-tool="select" title="선택 도구 (V)">
+            <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"></path><path d="M13 13l6 6"></path></svg>
+          </button>
+          <button class="draw-tool-btn" data-draw-tool="rect" title="사각형 도구 (R)">
+            <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><rect x="3" y="3" width="18" height="18" rx="2"></rect></svg>
+          </button>
+          <button class="draw-tool-btn" data-draw-tool="ellipse" title="원 도구 (E)">
+            <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="12" r="9"></circle></svg>
+          </button>
+          <button class="draw-tool-btn" data-draw-tool="line" title="선 도구 (L)">
+            <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><line x1="4" y1="20" x2="20" y2="4"></line></svg>
+          </button>
+        </div>
+        <span class="divider"></span>
         <button id="btn-toggle-live" class="toggle-btn" title="라이브 뷰로 전환 (브라우저 상호작용 테스트)">
           <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="12" r="10"></circle><polygon points="10 8 16 12 10 16 10 8" fill="currentColor" stroke="none"></polygon></svg>
           디자인

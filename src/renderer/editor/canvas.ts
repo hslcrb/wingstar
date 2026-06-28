@@ -1,5 +1,7 @@
 import { componentTemplates } from './templates';
 
+export type DrawMode = 'select' | 'rect' | 'ellipse' | 'line';
+
 export class CanvasManager {
   private iframe: HTMLIFrameElement;
   private overlay: HTMLElement;
@@ -7,6 +9,7 @@ export class CanvasManager {
   private deleteBtn: HTMLElement;
   private selectedElement: HTMLElement | null = null;
   private isLiveMode = false;
+  private drawMode: DrawMode = 'select';
   
   private onElementSelectedCallback: ((el: HTMLElement | null) => void) | null = null;
   private onCanvasChangedCallback: ((html: string) => void) | null = null;
@@ -126,6 +129,17 @@ export class CanvasManager {
     return this.isLiveMode;
   }
 
+  public setDrawMode(mode: DrawMode) {
+    this.drawMode = mode;
+    if (mode !== 'select') {
+      this.selectElement(null);
+    }
+  }
+
+  public getDrawMode(): DrawMode {
+    return this.drawMode;
+  }
+
   public selectElement(el: HTMLElement | null) {
     this.selectedElement = el;
     
@@ -187,8 +201,9 @@ export class CanvasManager {
     if (this.boundDragLeaveHandler) doc.removeEventListener('dragleave', this.boundDragLeaveHandler as any);
     if (this.boundDropHandler) doc.removeEventListener('drop', this.boundDropHandler as any);
 
-    // Handle clicks for selection
+    // Handle clicks for selection (bypass when drawing)
     this.boundClickHandler = (e: MouseEvent) => {
+      if (this.drawMode !== 'select') return;
       e.preventDefault();
       e.stopPropagation();
       const target = e.target as HTMLElement;

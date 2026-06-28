@@ -1145,3 +1145,38 @@ h1, h2, h3, h4 {
 #code-editor-panel.hidden + #resizer-center {
   display: none !important;
 }
+
+/* Drawing Tool Buttons */
+.draw-tool-group {
+  display: flex;
+  gap: 2px;
+  background: var(--bg-input);
+  padding: 3px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.draw-tool-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.draw-tool-btn:hover {
+  color: var(--text-main);
+  background: var(--bg-hover);
+}
+
+.draw-tool-btn.active {
+  color: #fff;
+  background: var(--primary-dark);
+  box-shadow: 0 0 8px var(--primary-glow);
+}

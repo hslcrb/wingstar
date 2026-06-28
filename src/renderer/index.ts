@@ -5,6 +5,7 @@ import { parseEPS } from './editor/eps-parser';
 import { parseSVG, VectorNode } from './editor/svg-parser';
 import { compileVectorToHTML } from './editor/vector-compiler';
 import { initPanelResizers } from './editor/panel-resizer';
+import { DrawingToolManager, DrawMode } from './editor/drawing-tool';
 import { defaultHTML } from './editor/templates';
 import confetti from 'canvas-confetti';
 import { ElectronAPI } from '../main/preload';
@@ -590,4 +591,58 @@ ${pathsMarkup}
 
   // Initialize panel resizers
   initPanelResizers(canvasManager);
+
+  // ─────────────────────────────────────────────
+  // 14. Drawing Tools
+  // ─────────────────────────────────────────────
+  const drawingTool = new DrawingToolManager({
+    onElementCreated: (el) => {
+      canvasManager.selectElement(el);
+    },
+    onCanvasChanged: () => {
+      const html = canvasManager.getContent();
+      projectPages[activePageName] = html;
+      codeEditorManager.setCode(html);
+      updateVectorLayersTreeFromCanvas();
+    }
+  });
+
+  const drawToolBtns = document.querySelectorAll('.draw-tool-btn');
+  drawToolBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      drawToolBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const tool = btn.getAttribute('data-draw-tool') as DrawMode;
+      drawingTool.setMode(tool);
+      canvasManager.setDrawMode(tool);
+    });
+  });
+
+  // Sync iframe document with drawing tool on canvas content changes
+  const originalSetContent = canvasManager.setContent.bind(canvasManager);
+  canvasManager.setContent = (html: string) => {
+    originalSetContent(html);
+    const iframe = document.getElementById('editor-frame') as HTMLIFrameElement;
+    const checkDoc = () => {
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (doc && doc.body) {
+        drawingTool.setIframeDoc(doc);
+      } else {
+        setTimeout(checkDoc, 50);
+      }
+    };
+    checkDoc();
+  };
+
+  // Initial iframe doc sync
+  const initIframeDoc = () => {
+    const iframe = document.getElementById('editor-frame') as HTMLIFrameElement;
+    const doc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (doc && doc.body) {
+      drawingTool.setIframeDoc(doc);
+    } else {
+      setTimeout(initIframeDoc, 100);
+    }
+  };
+  initIframeDoc();
 });
