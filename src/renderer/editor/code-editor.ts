@@ -64,19 +64,21 @@ export class CodeEditorManager {
     this.onCodeChangedCallback = callback;
   }
 
-  /**
-   * Safely updates the editor code value without triggering recursive event feedback loops.
-   * Deferred via requestAnimationFrame to prevent blocking the browser render loop.
-   */
   public setCode(code: string) {
-    if (!this.editor) return;
-    
-    // Use rAF to defer Monaco's heavy synchronous render, preventing UI jank
+    if (!this.editor) {
+      console.warn('[CodeEditor] setCode called before editor initialized');
+      return;
+    }
     requestAnimationFrame(() => {
       if (!this.editor) return;
-      this.isUpdatingSilently = true;
-      this.editor.setValue(code);
-      this.isUpdatingSilently = false;
+      try {
+        this.isUpdatingSilently = true;
+        this.editor.setValue(code);
+      } catch (err) {
+        console.error('[CodeEditor] setValue failed:', err);
+      } finally {
+        this.isUpdatingSilently = false;
+      }
     });
   }
 

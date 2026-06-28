@@ -40,43 +40,46 @@ export class PropertiesManager {
   private svgOpacityInput: HTMLInputElement;
 
   constructor() {
-    this.panelPlaceholder = document.getElementById('inspector-no-selection') as HTMLElement;
-    this.controlsContainer = document.getElementById('inspector-controls') as HTMLElement;
+    const $ = (id: string): HTMLElement => {
+      const el = document.getElementById(id);
+      if (!el) console.warn(`[Properties] Element #${id} not found in DOM`);
+      return el as HTMLElement;
+    };
 
-    // Cache elements
-    this.tagBadge = document.getElementById('info-tag-name') as HTMLElement;
-    this.idBadge = document.getElementById('info-tag-id') as HTMLElement;
-    this.widthInput = document.getElementById('prop-width') as HTMLInputElement;
-    this.heightInput = document.getElementById('prop-height') as HTMLInputElement;
-    this.marginInput = document.getElementById('prop-margin') as HTMLInputElement;
-    this.paddingInput = document.getElementById('prop-padding') as HTMLInputElement;
-    this.bgColorInput = document.getElementById('prop-bg-color') as HTMLInputElement;
-    this.bgColorPicker = document.getElementById('prop-bg-color-picker') as HTMLInputElement;
-    this.textColorInput = document.getElementById('prop-text-color') as HTMLInputElement;
-    this.textColorPicker = document.getElementById('prop-text-color-picker') as HTMLInputElement;
-    this.borderRadiusInput = document.getElementById('prop-border-radius') as HTMLInputElement;
-    this.displaySelect = document.getElementById('prop-display') as HTMLSelectElement;
-    this.fontSizeInput = document.getElementById('prop-font-size') as HTMLInputElement;
-    this.fontWeightSelect = document.getElementById('prop-font-weight') as HTMLSelectElement;
-    this.contentTextarea = document.getElementById('prop-content') as HTMLTextAreaElement;
+    this.panelPlaceholder = $('inspector-no-selection');
+    this.controlsContainer = $('inspector-controls');
 
-    // Vector Map
-    this.vectorGroup = document.getElementById('group-vector-map') as HTMLElement;
-    this.vectorLayerIdText = document.getElementById('vector-layer-id') as HTMLElement;
-    this.convertBtn = document.getElementById('btn-convert-btn') as HTMLElement;
-    this.convertLink = document.getElementById('btn-convert-link') as HTMLElement;
-    this.convertDiv = document.getElementById('btn-convert-div') as HTMLElement;
-    this.clickActionTextarea = document.getElementById('vector-click-action') as HTMLTextAreaElement;
-    this.applyActionBtn = document.getElementById('btn-apply-action') as HTMLElement;
+    this.tagBadge = $('info-tag-name');
+    this.idBadge = $('info-tag-id');
+    this.widthInput = $('prop-width') as HTMLInputElement;
+    this.heightInput = $('prop-height') as HTMLInputElement;
+    this.marginInput = $('prop-margin') as HTMLInputElement;
+    this.paddingInput = $('prop-padding') as HTMLInputElement;
+    this.bgColorInput = $('prop-bg-color') as HTMLInputElement;
+    this.bgColorPicker = $('prop-bg-color-picker') as HTMLInputElement;
+    this.textColorInput = $('prop-text-color') as HTMLInputElement;
+    this.textColorPicker = $('prop-text-color-picker') as HTMLInputElement;
+    this.borderRadiusInput = $('prop-border-radius') as HTMLInputElement;
+    this.displaySelect = $('prop-display') as HTMLSelectElement;
+    this.fontSizeInput = $('prop-font-size') as HTMLInputElement;
+    this.fontWeightSelect = $('prop-font-weight') as HTMLSelectElement;
+    this.contentTextarea = $('prop-content') as HTMLTextAreaElement;
 
-    // SVG Attributes
-    this.svgGroup = document.getElementById('group-svg-properties') as HTMLElement;
-    this.svgFillInput = document.getElementById('prop-svg-fill') as HTMLInputElement;
-    this.svgFillPicker = document.getElementById('prop-svg-fill-picker') as HTMLInputElement;
-    this.svgStrokeInput = document.getElementById('prop-svg-stroke') as HTMLInputElement;
-    this.svgStrokePicker = document.getElementById('prop-svg-stroke-picker') as HTMLInputElement;
-    this.svgStrokeWidthInput = document.getElementById('prop-svg-stroke-width') as HTMLInputElement;
-    this.svgOpacityInput = document.getElementById('prop-svg-opacity') as HTMLInputElement;
+    this.vectorGroup = $('group-vector-map');
+    this.vectorLayerIdText = $('vector-layer-id');
+    this.convertBtn = $('btn-convert-btn');
+    this.convertLink = $('btn-convert-link');
+    this.convertDiv = $('btn-convert-div');
+    this.clickActionTextarea = $('vector-click-action') as HTMLTextAreaElement;
+    this.applyActionBtn = $('btn-apply-action');
+
+    this.svgGroup = $('group-svg-properties');
+    this.svgFillInput = $('prop-svg-fill') as HTMLInputElement;
+    this.svgFillPicker = $('prop-svg-fill-picker') as HTMLInputElement;
+    this.svgStrokeInput = $('prop-svg-stroke') as HTMLInputElement;
+    this.svgStrokePicker = $('prop-svg-stroke-picker') as HTMLInputElement;
+    this.svgStrokeWidthInput = $('prop-svg-stroke-width') as HTMLInputElement;
+    this.svgOpacityInput = $('prop-svg-opacity') as HTMLInputElement;
 
     this.setupListeners();
   }
@@ -213,86 +216,89 @@ export class PropertiesManager {
       this.triggerChange();
     };
 
-    // Text inputs mapping
-    this.widthInput.addEventListener('input', () => applyStyle('width', this.widthInput.value));
-    this.heightInput.addEventListener('input', () => applyStyle('height', this.heightInput.value));
-    this.marginInput.addEventListener('input', () => applyStyle('margin', this.marginInput.value));
-    this.paddingInput.addEventListener('input', () => applyStyle('padding', this.paddingInput.value));
-    this.borderRadiusInput.addEventListener('input', () => applyStyle('borderRadius', this.borderRadiusInput.value));
-    this.fontSizeInput.addEventListener('input', () => applyStyle('fontSize', this.fontSizeInput.value));
-    
-    this.displaySelect.addEventListener('change', () => applyStyle('display', this.displaySelect.value));
-    this.fontWeightSelect.addEventListener('change', () => applyStyle('fontWeight', this.fontWeightSelect.value));
+    const safeAdd = (el: HTMLElement, event: string, fn: EventListener) => {
+      if (el) el.addEventListener(event, fn);
+    };
 
-    // Colors colorpicker link with text inputs
-    this.bgColorInput.addEventListener('input', () => {
+    safeAdd(this.widthInput, 'input', () => applyStyle('width', this.widthInput.value));
+    safeAdd(this.heightInput, 'input', () => applyStyle('height', this.heightInput.value));
+    safeAdd(this.marginInput, 'input', () => applyStyle('margin', this.marginInput.value));
+    safeAdd(this.paddingInput, 'input', () => applyStyle('padding', this.paddingInput.value));
+    safeAdd(this.borderRadiusInput, 'input', () => applyStyle('borderRadius', this.borderRadiusInput.value));
+    safeAdd(this.fontSizeInput, 'input', () => applyStyle('fontSize', this.fontSizeInput.value));
+    
+    safeAdd(this.displaySelect, 'change', () => applyStyle('display', this.displaySelect.value));
+    safeAdd(this.fontWeightSelect, 'change', () => applyStyle('fontWeight', this.fontWeightSelect.value));
+
+    safeAdd(this.bgColorInput, 'input', () => {
       applyStyle('backgroundColor', this.bgColorInput.value);
     });
-    this.bgColorPicker.addEventListener('input', () => {
+    safeAdd(this.bgColorPicker, 'input', () => {
       this.bgColorInput.value = this.bgColorPicker.value;
       applyStyle('backgroundColor', this.bgColorPicker.value);
     });
 
-    this.textColorInput.addEventListener('input', () => {
+    safeAdd(this.textColorInput, 'input', () => {
       applyStyle('color', this.textColorInput.value);
     });
-    this.textColorPicker.addEventListener('input', () => {
+    safeAdd(this.textColorPicker, 'input', () => {
       this.textColorInput.value = this.textColorPicker.value;
       applyStyle('color', this.textColorPicker.value);
     });
 
-    // Text Alignment toggles
-    const alignButtons = this.controlsContainer.querySelectorAll('.btn-toggle[data-align]');
-    alignButtons.forEach(btn => {
-      btn.addEventListener('click', () => {
-        alignButtons.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        const align = btn.getAttribute('data-align') || 'left';
-        applyStyle('textAlign', align);
+    if (this.controlsContainer) {
+      const alignButtons = this.controlsContainer.querySelectorAll('.btn-toggle[data-align]');
+      alignButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          alignButtons.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          const align = btn.getAttribute('data-align') || 'left';
+          applyStyle('textAlign', align);
+        });
       });
-    });
+    }
 
-    // HTML Content textarea
-    this.contentTextarea.addEventListener('input', () => {
+    safeAdd(this.contentTextarea, 'input', () => {
       if (!this.selectedElement) return;
-      this.selectedElement.innerHTML = this.contentTextarea.value;
-      this.triggerChange();
+      try {
+        this.selectedElement.innerHTML = this.contentTextarea.value;
+        this.triggerChange();
+      } catch (err) {
+        console.error('[Properties] Failed to set innerHTML:', err);
+      }
     });
 
-    // SVG Attribute Listeners
-    this.svgFillInput.addEventListener('input', () => {
+    safeAdd(this.svgFillInput, 'input', () => {
       this.svgFillPicker.value = this.colorToHex(this.svgFillInput.value) || '#ffffff';
       applySvgAttr('fill', this.svgFillInput.value);
     });
-    this.svgFillPicker.addEventListener('input', () => {
+    safeAdd(this.svgFillPicker, 'input', () => {
       this.svgFillInput.value = this.svgFillPicker.value;
       applySvgAttr('fill', this.svgFillPicker.value);
     });
 
-    this.svgStrokeInput.addEventListener('input', () => {
+    safeAdd(this.svgStrokeInput, 'input', () => {
       this.svgStrokePicker.value = this.colorToHex(this.svgStrokeInput.value) || '#000000';
       applySvgAttr('stroke', this.svgStrokeInput.value);
     });
-    this.svgStrokePicker.addEventListener('input', () => {
+    safeAdd(this.svgStrokePicker, 'input', () => {
       this.svgStrokeInput.value = this.svgStrokePicker.value;
       applySvgAttr('stroke', this.svgStrokePicker.value);
     });
 
-    this.svgStrokeWidthInput.addEventListener('input', () => {
+    safeAdd(this.svgStrokeWidthInput, 'input', () => {
       applySvgAttr('stroke-width', this.svgStrokeWidthInput.value);
     });
 
-    this.svgOpacityInput.addEventListener('input', () => {
+    safeAdd(this.svgOpacityInput, 'input', () => {
       applySvgAttr('opacity', this.svgOpacityInput.value);
     });
 
-    // Vector Entity Conversions
-    this.convertBtn.addEventListener('click', () => this.convertVector('button'));
-    this.convertLink.addEventListener('click', () => this.convertVector('a'));
-    this.convertDiv.addEventListener('click', () => this.convertVector('div'));
+    safeAdd(this.convertBtn, 'click', () => this.convertVector('button'));
+    safeAdd(this.convertLink, 'click', () => this.convertVector('a'));
+    safeAdd(this.convertDiv, 'click', () => this.convertVector('div'));
 
-    // Apply inline actions scripts
-    this.applyActionBtn.addEventListener('click', () => {
+    safeAdd(this.applyActionBtn, 'click', () => {
       if (!this.selectedElement) return;
       const scriptCode = this.clickActionTextarea.value.trim();
       if (scriptCode) {

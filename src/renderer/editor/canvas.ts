@@ -44,34 +44,44 @@ export class CanvasManager {
   }
 
   public setContent(html: string) {
-    // Clear selection state before reloading iframe DOM to prevent detached node reference errors
     this.selectElement(null);
 
     const doc = this.iframe.contentDocument || this.iframe.contentWindow?.document;
-    if (!doc) return;
+    if (!doc) {
+      console.warn('[Canvas] iframe document not available, skipping setContent');
+      return;
+    }
 
-    // Set onload BEFORE doc.write so it's ready when load fires after doc.close()
-    this.iframe.onload = () => {
-      this.bindIframeEvents();
-    };
-
-    doc.open();
-    doc.write(html);
-    doc.close();
+    try {
+      this.iframe.onload = () => {
+        this.bindIframeEvents();
+      };
+      doc.open();
+      doc.write(html);
+      doc.close();
+    } catch (err) {
+      console.error('[Canvas] setContent failed:', err);
+    }
   }
 
   public getContent(): string {
     const doc = this.iframe.contentDocument || this.iframe.contentWindow?.document;
-    if (!doc) return '';
+    if (!doc || !doc.documentElement) {
+      console.warn('[Canvas] document not available for getContent');
+      return '';
+    }
     
-    // Remove temporary editable flags and selection outlines inside iframe
-    const tempDoc = doc.documentElement.cloneNode(true) as HTMLElement;
-    const editableElements = tempDoc.querySelectorAll('[contenteditable]');
-    editableElements.forEach(el => {
-      el.removeAttribute('contenteditable');
-    });
-
-    return '<!DOCTYPE html>\n' + tempDoc.outerHTML;
+    try {
+      const tempDoc = doc.documentElement.cloneNode(true) as HTMLElement;
+      const editableElements = tempDoc.querySelectorAll('[contenteditable]');
+      editableElements.forEach(el => {
+        el.removeAttribute('contenteditable');
+      });
+      return '<!DOCTYPE html>\n' + tempDoc.outerHTML;
+    } catch (err) {
+      console.error('[Canvas] getContent failed:', err);
+      return '';
+    }
   }
 
   public onElementSelected(callback: (el: HTMLElement | null) => void) {
