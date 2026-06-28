@@ -745,13 +745,100 @@ ${pathsMarkup}
   });
 
   // ─────────────────────────────────────────────
-  // 19. Keyboard Shortcuts
+  // 19. Project Save / Load (HTML-only format)
+  // ─────────────────────────────────────────────
+  function serializeProject(): string {
+    const current = canvasManager.getContent();
+    // Embed all pages in a script tag within the HTML
+    const pagesData = Object.entries(projectPages).map(([name, html]) => {
+      return `<!-- wingstar-page: ${name} -->\n${html}\n<!-- endwingstar-page -->`;
+    }).join('\n');
+    // Strip the DOCTYPE from current content, use as main body
+    const mainHtml = current.replace('<!DOCTYPE html>\n', '');
+    return `<!DOCTYPE html>\n<!-- wingstar-project -->\n${pagesData}\n<!-- endwingstar-project -->\n${mainHtml}`;
+  }
+
+  function deserializeProject(fullHtml: string) {
+    const pages: { [name: string]: string } = {};
+    let mainContent = fullHtml;
+
+    // Extract embedded pages from HTML comments
+    const pageRegex = /<!-- wingstar-page:\s*([^\s-]+)\s*-->([\s\S]*?)<!--\s*endwingstar-page\s*-->/g;
+    let match;
+    let firstPageName: string | null = null;
+    while ((match = pageRegex.exec(fullHtml)) !== null) {
+      const name = match[1].trim();
+      const html = match[2].trim();
+      pages[name] = html;
+      if (!firstPageName) firstPageName = name;
+      // Remove from main content
+      mainContent = mainContent.replace(match[0], '');
+    }
+
+    // Also strip project markers
+    mainContent = mainContent.replace(/<!--\s*wingstar-project\s*-->/g, '').replace(/<!--\s*endwingstar-project\s*-->/g, '').trim();
+
+    if (Object.keys(pages).length === 0) {
+      // Not a WingStar project file; treat entire content as a single page
+      pages['Page 1'] = mainContent;
+    }
+
+    return { pages, mainContent, firstPageName };
+  }
+
+  async function saveProject() {
+    const serialized = serializeProject();
+    const result = await window.electronAPI.saveHTML('index.html', serialized);
+    if (result?.success) {
+      showToast(`저장 완료: ${result.filePath}`, 'success');
+    } else {
+      showToast('저장 취소됨', 'error');
+    }
+  }
+
+  async function openProject() {
+    const result = await window.electronAPI.openFile();
+    if (!result || !result.content) return;
+
+    const { pages, firstPageName } = deserializeProject(result.content);
+    projectPages = {};
+    activePageName = '';
+
+    let first = true;
+    for (const [name, html] of Object.entries(pages)) {
+      projectPages[name] = html;
+      if (first || name === firstPageName) {
+        activePageName = name;
+        canvasManager.setContent(html);
+        codeEditorManager.setCode(html);
+        first = false;
+      }
+    }
+
+    if (activePageName) refreshPageTabs();
+    pushUndoState();
+    showToast(`열기 완료: ${Object.keys(pages).length}개 페이지`, 'success');
+  }
+
+  document.getElementById('btn-save')?.addEventListener('click', saveProject);
+  document.getElementById('btn-open')?.addEventListener('click', openProject);
+
+  // ─────────────────────────────────────────────
+  // 20. Keyboard Shortcuts
   // ─────────────────────────────────────────────
   document.addEventListener('keydown', (e) => {
     const ctrl = e.ctrlKey || e.metaKey;
     const active = document.activeElement;
     const isInputFocused = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT' || active.isContentEditable);
 
+    if (ctrl && e.key === 's' && !isInputFocused) {
+      e.preventDefault();
+      saveProject();
+    }
+    if (ctrl && e.key === 'o' && !isInputFocused) {
+      e.preventDefault();
+      openProject();
+    }
     if (ctrl && e.key === 'z' && !e.shiftKey) {
       e.preventDefault();
       undoManager.undo();
