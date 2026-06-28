@@ -190,6 +190,16 @@
               <div class="component-item" data-type="card">카드 컨테이너</div>
             </div>
           </div>
+          <div class="sidebar-section">
+            <div class="section-header">
+              <h3>내 컴포넌트</h3>
+              <span id="comp-lib-count" class="status-badge">0</span>
+            </div>
+            <div id="component-library-list" class="comp-lib-list"></div>
+            <div class="comp-lib-save-area">
+              <button class="comp-lib-save-btn" id="btn-save-component">+ 현재 선택을 컴포넌트로 저장</button>
+            </div>
+          </div>
         </div>
 
         <div class="tab-content" id="tab-vectors">
@@ -424,6 +434,45 @@
                 <div class="control-field">
                   <label for="prop-content">내부 텍스트 / HTML</label>
                   <textarea id="prop-content" rows="4" placeholder="내용을 입력하세요..."></textarea>
+                </div>
+              </div>
+            </div>
+
+            <div class="inspector-group hidden" id="group-link-props">
+              <label class="group-title">링크 / 속성</label>
+              <div class="group-body">
+                <div class="control-field hidden" id="field-href">
+                  <label for="prop-href">HREF (링크 주소)</label>
+                  <input type="text" id="prop-href" placeholder="https://">
+                </div>
+                <div class="control-field hidden" id="field-src">
+                  <label for="prop-src">SRC (이미지 주소)</label>
+                  <input type="text" id="prop-src" placeholder="https://">
+                </div>
+                <div class="control-field hidden" id="field-alt">
+                  <label for="prop-alt">ALT (대체 텍스트)</label>
+                  <input type="text" id="prop-alt" placeholder="이미지 설명">
+                </div>
+              </div>
+            </div>
+
+            <div class="inspector-group" id="group-css-classes">
+              <label class="group-title">CSS 클래스</label>
+              <div class="group-body">
+                <div class="class-list"></div>
+                <div class="class-input-wrapper">
+                  <input type="text" class="class-input" placeholder="클래스 이름 입력 후 Enter">
+                </div>
+              </div>
+            </div>
+
+            <div class="inspector-group hidden" id="group-style-presets">
+              <label class="group-title">스타일 프리셋</label>
+              <div class="group-body">
+                <div class="preset-list" id="preset-list"></div>
+                <div class="preset-save-row">
+                  <input type="text" class="preset-save-input" id="preset-name-input" placeholder="프리셋 이름">
+                  <button class="preset-save-btn" id="btn-save-preset">저장</button>
                 </div>
               </div>
             </div>

@@ -2,7 +2,6 @@ import { CanvasManager } from './editor/canvas';
 import { PropertiesManager } from './editor/properties';
 import { CodeEditorManager } from './editor/code-editor';
 import { parseEPS } from './editor/eps-parser';
-import { parseSVG, VectorNode } from './editor/svg-parser';
 import { compileVectorToHTML } from './editor/vector-compiler';
 import { initPanelResizers } from './editor/panel-resizer';
 import { DrawingToolManager, DrawMode } from './editor/drawing-tool';
@@ -10,6 +9,10 @@ import { alignElement, AlignMode } from './editor/alignment';
 import { LayerPanel } from './editor/layer-panel';
 import { UndoManager } from './editor/undo-manager';
 import { ContextMenu } from './editor/context-menu';
+import { ClassManager } from './editor/class-manager';
+import { loadPresets, savePreset, deletePreset, applyPreset, renderPresetList } from './editor/style-preset';
+import { loadComponents, saveComponent, deleteComponent, renderComponentLibrary } from './editor/component-library';
+import { initRulerGuides, clearAllGuides } from './editor/ruler-guide';
 import { defaultHTML } from './editor/templates';
 import confetti from 'canvas-confetti';
 import { ElectronAPI } from '../main/preload';
@@ -29,9 +32,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // Debounced raw code editor update to canvas
   let codeChangeTimeout: ReturnType<typeof setTimeout>;
   const DEBOUNCE_DELAY = 600;
-
-  // Track parsed vector root for layers tree mapping
-  let activeVectorRoot: VectorNode | null = null;
 
   // ─────────────────────────────────────────────
   // 2. Multi-Page State
@@ -74,12 +74,26 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ─────────────────────────────────────────────
-  // 5. Bidirectional Syncing
+  // 5. Class Manager & Style Presets
+  // ─────────────────────────────────────────────
+  const classManager = new ClassManager('group-css-classes');
+  classManager.onChange(() => {
+    const html = canvasManager.getContent();
+    projectPages[activePageName] = html;
+    codeEditorManager.setCode(html);
+    pushUndoState();
+  });
+
+  // ─────────────────────────────────────────────
+  // 5b. Bidirectional Syncing
   // ─────────────────────────────────────────────
 
   // Canvas interactions update Property Inspector & Code Editor
   canvasManager.onElementSelected((el) => {
     propertiesManager.bindElement(el);
+    classManager.bind(el);
+    bindLinkProps(el);
+    refreshPresetList();
   });
 
   canvasManager.onCanvasChanged((newHTML) => {
@@ -138,6 +152,8 @@ document.addEventListener('DOMContentLoaded', () => {
           content.classList.remove('active');
         }
       });
+
+      if (targetTabId === 'tab-components') refreshComponentLibrary();
     });
   });
 
@@ -248,8 +264,7 @@ document.addEventListener('DOMContentLoaded', () => {
     canvasManager.setContent(pageContent);
     codeEditorManager.setCode(pageContent);
     canvasManager.selectElement(null);
-    activeVectorRoot = null;
-    renderLayersTree();
+    refreshLayerPanel();
     renderPagesList();
   }
 
@@ -279,6 +294,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Initial render
   renderPagesList();
+  refreshComponentLibrary();
 
   // ─────────────────────────────────────────────
   // 11. Vector Graphics Importer (SVG & EPS)
@@ -382,8 +398,7 @@ ${pathsMarkup}
             const insertedSvg = frameDoc.querySelector(`[data-vnode-id^="vtrack-"]`) as HTMLElement;
             if (insertedSvg) {
               canvasManager.selectElement(insertedSvg);
-              activeVectorRoot = parseSVG(trackedSvgMarkup);
-              renderLayersTree();
+              refreshLayerPanel();
               const vectorsTabBtn = document.querySelector('.tab-link[data-tab="tab-vectors"]') as HTMLElement;
               if (vectorsTabBtn) vectorsTabBtn.click();
             }
@@ -447,8 +462,7 @@ ${pathsMarkup}
       canvasManager.setContent(defaultHTML);
       codeEditorManager.setCode(defaultHTML);
       canvasManager.selectElement(null);
-      activeVectorRoot = null;
-      renderLayersTree();
+      refreshLayerPanel();
       renderPagesList();
     }
   });
@@ -716,7 +730,160 @@ ${pathsMarkup}
   });
 
   // ─────────────────────────────────────────────
-  // 19. Project Save / Load (HTML-only format)
+  // 19. Link Properties Binding
+  // ─────────────────────────────────────────────
+  const linkGroup = document.getElementById('group-link-props') as HTMLElement;
+  const fieldHref = document.getElementById('field-href') as HTMLElement;
+  const fieldSrc = document.getElementById('field-src') as HTMLElement;
+  const fieldAlt = document.getElementById('field-alt') as HTMLElement;
+  const propHref = document.getElementById('prop-href') as HTMLInputElement;
+  const propSrc = document.getElementById('prop-src') as HTMLInputElement;
+  const propAlt = document.getElementById('prop-alt') as HTMLInputElement;
+
+  const stylePresetGroup = document.getElementById('group-style-presets') as HTMLElement;
+
+  function bindLinkProps(el: HTMLElement | null) {
+    if (!el) {
+      linkGroup.classList.add('hidden');
+      stylePresetGroup.classList.add('hidden');
+      return;
+    }
+    stylePresetGroup.classList.remove('hidden');
+    const tag = el.tagName.toLowerCase();
+    let hasLink = false;
+
+    if (tag === 'a') {
+      fieldHref.classList.remove('hidden');
+      fieldSrc.classList.add('hidden');
+      fieldAlt.classList.add('hidden');
+      propHref.value = el.getAttribute('href') || '';
+      hasLink = true;
+    } else if (tag === 'img') {
+      fieldHref.classList.add('hidden');
+      fieldSrc.classList.remove('hidden');
+      fieldAlt.classList.remove('hidden');
+      propSrc.value = el.getAttribute('src') || '';
+      propAlt.value = el.getAttribute('alt') || '';
+      hasLink = true;
+    } else if (tag === 'button' || tag === 'input' || tag === 'textarea') {
+      fieldHref.classList.add('hidden');
+      fieldSrc.classList.add('hidden');
+      fieldAlt.classList.add('hidden');
+      hasLink = false;
+    } else {
+      fieldHref.classList.remove('hidden');
+      fieldSrc.classList.add('hidden');
+      fieldAlt.classList.add('hidden');
+      propHref.value = el.getAttribute('href') || el.getAttribute('src') || '';
+      hasLink = true;
+    }
+
+    linkGroup.classList.toggle('hidden', !hasLink);
+  }
+
+  let linkPropTimeout: ReturnType<typeof setTimeout>;
+  function pushLinkChange() {
+    clearTimeout(linkPropTimeout);
+    linkPropTimeout = setTimeout(() => {
+      const html = canvasManager.getContent();
+      projectPages[activePageName] = html;
+      codeEditorManager.setCode(html);
+      pushUndoState();
+    }, 300);
+  }
+
+  propHref.addEventListener('input', () => {
+    const el = canvasManager.getSelectedElement();
+    if (!el) return;
+    el.setAttribute('href', propHref.value);
+    pushLinkChange();
+  });
+
+  propSrc.addEventListener('input', () => {
+    const el = canvasManager.getSelectedElement();
+    if (el) el.setAttribute('src', propSrc.value);
+    pushLinkChange();
+  });
+
+  propAlt.addEventListener('input', () => {
+    const el = canvasManager.getSelectedElement();
+    if (el) el.setAttribute('alt', propAlt.value);
+    pushLinkChange();
+  });
+
+  // ─────────────────────────────────────────────
+  // 20. Style Presets
+  // ─────────────────────────────────────────────
+  const presetList = document.getElementById('preset-list') as HTMLElement;
+  const presetNameInput = document.getElementById('preset-name-input') as HTMLInputElement;
+  const btnSavePreset = document.getElementById('btn-save-preset') as HTMLElement;
+
+  function refreshPresetList() {
+    renderPresetList(presetList,
+      (name) => {
+        const el = canvasManager.getSelectedElement();
+        if (!el) return;
+        applyPreset(name, el);
+        canvasManager.updateOverlayPosition();
+        const html = canvasManager.getContent();
+        projectPages[activePageName] = html;
+        codeEditorManager.setCode(html);
+        pushUndoState();
+      },
+      (name) => {
+        deletePreset(name);
+        refreshPresetList();
+      }
+    );
+  }
+
+  btnSavePreset.addEventListener('click', () => {
+    const el = canvasManager.getSelectedElement();
+    if (!el) { alert('선택된 요소가 없습니다.'); return; }
+    const name = presetNameInput.value.trim();
+    if (!name) { alert('프리셋 이름을 입력하세요.'); return; }
+    savePreset(name, el);
+    presetNameInput.value = '';
+    refreshPresetList();
+  });
+
+  // ─────────────────────────────────────────────
+  // 21. Component Library
+  // ─────────────────────────────────────────────
+  const compLibList = document.getElementById('component-library-list') as HTMLElement;
+  const compLibCount = document.getElementById('comp-lib-count') as HTMLElement;
+  const btnSaveComponent = document.getElementById('btn-save-component') as HTMLElement;
+
+  function refreshComponentLibrary() {
+    renderComponentLibrary(compLibList, (html) => {
+      const current = canvasManager.getContent();
+      const injected = current.replace('</body>', `\n${html}\n</body>`);
+      canvasManager.setContent(injected);
+      projectPages[activePageName] = injected;
+      codeEditorManager.setCode(injected);
+      pushUndoState();
+    });
+    const comps = loadComponents();
+    compLibCount.textContent = String(comps.length);
+  }
+
+  btnSaveComponent.addEventListener('click', () => {
+    const el = canvasManager.getSelectedElement();
+    if (!el) { alert('선택된 요소가 없습니다.'); return; }
+    const name = prompt('컴포넌트 이름을 입력하세요:');
+    if (!name) return;
+    saveComponent(name, el.outerHTML);
+    refreshComponentLibrary();
+  });
+
+  // ─────────────────────────────────────────────
+  // 22. Ruler Guide Lines
+  // ─────────────────────────────────────────────
+  const canvasWrapperEl = document.getElementById('canvas-wrapper') as HTMLElement;
+  initRulerGuides(canvasWrapperEl);
+
+  // ─────────────────────────────────────────────
+  // 23. Project Save / Load (HTML-only format)
   // ─────────────────────────────────────────────
   function serializeProject(): string {
     const current = canvasManager.getContent();
@@ -757,6 +924,16 @@ ${pathsMarkup}
     return { pages, mainContent, firstPageName };
   }
 
+  function showToast(msg: string, type: 'success' | 'error' = 'success') {
+    const toast = document.getElementById('toast-message') as HTMLElement;
+    if (!toast) return;
+    toast.textContent = msg;
+    toast.className = 'toast-message toast-visible';
+    if (type === 'error') toast.classList.add('toast-error');
+    clearTimeout((toast as any)._toastTimer);
+    (toast as any)._toastTimer = setTimeout(() => toast.classList.remove('toast-visible'), 3000);
+  }
+
   async function saveProject() {
     const serialized = serializeProject();
     const result = await window.electronAPI.saveHTML('index.html', serialized);
@@ -786,7 +963,7 @@ ${pathsMarkup}
       }
     }
 
-    if (activePageName) refreshPageTabs();
+    if (activePageName) renderPagesList();
     pushUndoState();
     showToast(`열기 완료: ${Object.keys(pages).length}개 페이지`, 'success');
   }
