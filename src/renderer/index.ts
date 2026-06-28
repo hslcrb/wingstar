@@ -80,7 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const syncStatus = document.getElementById('code-sync-status');
     if (syncStatus) {
-      syncStatus.textContent = 'Typing...';
+      syncStatus.textContent = '입력 중…';
       syncStatus.style.color = 'var(--accent)';
     }
 
@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
       canvasManager.setContent(newCode);
       projectPages[activePageName] = newCode;
       if (syncStatus) {
-        syncStatus.textContent = 'Synced';
+        syncStatus.textContent = '동기화 완료';
         syncStatus.style.color = 'var(--success)';
       }
       updateVectorLayersTreeFromCanvas();
@@ -205,7 +205,7 @@ document.addEventListener('DOMContentLoaded', () => {
         </svg>
         <span class="page-name">${pageName}</span>
         ${!isIndex ? `
-        <button class="page-delete-btn" title="Delete page" data-delete-page="${pageName}">
+        <button class="page-delete-btn" title="페이지 삭제" data-delete-page="${pageName}">
           <svg viewBox="0 0 24 24" width="10" height="10" stroke="currentColor" stroke-width="2.5" fill="none">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -226,7 +226,7 @@ document.addEventListener('DOMContentLoaded', () => {
         deleteBtn.addEventListener('click', (e) => {
           e.stopPropagation();
           const target = (e.currentTarget as HTMLElement).getAttribute('data-delete-page')!;
-          if (confirm(`Delete "${target}"? This cannot be undone.`)) {
+          if (confirm(`"${target}"을(를) 삭제하시겠습니까? 되돌릴 수 없습니다.`)) {
             delete projectPages[target];
             if (activePageName === target) {
               switchToPage('index.html');
@@ -258,7 +258,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   btnAddPage.addEventListener('click', () => {
-    let newName = prompt('Enter new page filename (e.g. about.html):');
+    let newName = prompt('새 페이지 파일명을 입력하세요 (예: about.html):');
     if (!newName) return;
     newName = newName.trim();
     if (!newName.endsWith('.html')) newName += '.html';
@@ -266,7 +266,7 @@ document.addEventListener('DOMContentLoaded', () => {
     newName = newName.replace(/[^a-zA-Z0-9._-]/g, '_');
 
     if (projectPages[newName]) {
-      alert(`Page "${newName}" already exists.`);
+      alert(`"${newName}" 페이지가 이미 존재합니다.`);
       return;
     }
 
@@ -295,7 +295,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!file) return;
 
       if (loadingToast) {
-        loadingToast.textContent = 'Loading vector file…';
+        loadingToast.textContent = '벡터 파일 불러오는 중…';
         loadingToast.classList.remove('hidden', 'toast-error');
         loadingToast.classList.add('toast-visible');
       }
@@ -330,7 +330,7 @@ ${pathsMarkup}
       );
 
       if (loadingToast) {
-        loadingToast.textContent = shouldCompileToHtml ? 'Compiling HTML layout…' : 'Inserting vector…';
+        loadingToast.textContent = shouldCompileToHtml ? 'HTML 레이아웃 변환 중…' : '벡터 삽입 중…';
       }
 
       const parser = new DOMParser();
@@ -362,7 +362,7 @@ ${pathsMarkup}
         const doc = parser.parseFromString(svgMarkup, 'image/svg+xml');
         const rootSvg = doc.querySelector('svg');
         if (!rootSvg) {
-          alert('Invalid SVG vector data loaded.');
+          alert('유효하지 않은 SVG 벡터 데이터입니다.');
           return;
         }
 
@@ -403,10 +403,10 @@ ${pathsMarkup}
       }
     } catch (err: any) {
       if (loadingToast) {
-        loadingToast.textContent = `Import failed: ${err.message}`;
+        loadingToast.textContent = `가져오기 실패: ${err.message}`;
         loadingToast.classList.add('toast-error');
       }
-      alert(`Import error: ${err.message}`);
+      alert(`가져오기 오류: ${err.message}`);
     }
   });
 
@@ -507,7 +507,7 @@ ${pathsMarkup}
   // Clear / Reset to standard page
   const btnNewProject = document.getElementById('btn-new-project') as HTMLElement;
   btnNewProject.addEventListener('click', () => {
-    if (confirm('Create a new project? All unsaved pages will be discarded.')) {
+    if (confirm('새 프로젝트를 만드시겠습니까? 저장하지 않은 페이지는 모두 사라집니다.')) {
       projectPages = { 'index.html': defaultHTML };
       activePageName = 'index.html';
       canvasManager.setContent(defaultHTML);
@@ -530,7 +530,7 @@ ${pathsMarkup}
         confetti({ particleCount: 80, spread: 60 });
       }
     } catch (err: any) {
-      alert(`Export HTML failed: ${err.message}`);
+      alert(`HTML 내보내기 실패: ${err.message}`);
     }
   });
 
@@ -567,10 +567,10 @@ ${pathsMarkup}
           spread: 80,
           colors: ['#c084fc', '#fbbf24', '#22d3ee']
         });
-        alert(`✅ Exported ${result.pageCount} page(s) to:\n${result.dirPath}`);
+        alert(`✅ ${result.pageCount}개 페이지를 내보냈습니다:\n${result.dirPath}`);
       }
     } catch (err: any) {
-      alert(`Project Export failed: ${err.message}`);
+      alert(`프로젝트 내보내기 실패: ${err.message}`);
     }
   });
 
@@ -581,10 +581,10 @@ ${pathsMarkup}
     try {
       const result = await window.electronAPI.saveHTML('wingstar-preview.html', currentCode);
       if (result && result.success) {
-        alert(`Saved preview to: ${result.filePath}\nYou can load this file directly in any browser for live responsive testing.`);
+        alert(`미리보기 파일을 저장했습니다:\n${result.filePath}\n웹 브라우저에서 직접 열어 테스트할 수 있습니다.`);
       }
     } catch (err: any) {
-      alert(`Failed to save preview file: ${err.message}`);
+      alert(`미리보기 파일 저장 실패: ${err.message}`);
     }
   });
 
