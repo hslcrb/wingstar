@@ -1186,6 +1186,48 @@ h1, h2, h3, h4 {
   display: none !important;
 }
 
+/* Alignment Tool Buttons */
+.tool-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--bg-input);
+  padding: 3px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.align-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.align-btn:hover {
+  color: var(--text-main);
+  background: var(--bg-hover);
+}
+
+.align-btn:active {
+  color: #fff;
+  background: var(--primary-dark);
+}
+
+.group-sep {
+  width: 1px;
+  height: 16px;
+  background: var(--border-color);
+  margin: 0 2px;
+}
+
 /* Drawing Tool Buttons */
 .draw-tool-group {
   display: flex;

@@ -6,6 +6,7 @@ import { parseSVG, VectorNode } from './editor/svg-parser';
 import { compileVectorToHTML } from './editor/vector-compiler';
 import { initPanelResizers } from './editor/panel-resizer';
 import { DrawingToolManager, DrawMode } from './editor/drawing-tool';
+import { alignElement, AlignMode } from './editor/alignment';
 import { LayerPanel } from './editor/layer-panel';
 import { UndoManager } from './editor/undo-manager';
 import { defaultHTML } from './editor/templates';
@@ -569,6 +570,24 @@ ${pathsMarkup}
       const tool = btn.getAttribute('data-draw-tool') as DrawMode;
       drawingTool.setMode(tool);
       canvasManager.setDrawMode(tool);
+    });
+  });
+
+  // ─────────────────────────────────────────────
+  // 15. Alignment Tools
+  // ─────────────────────────────────────────────
+  const alignBtns = document.querySelectorAll('.align-btn');
+  alignBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const el = canvasManager.getSelectedElement();
+      if (!el) return;
+      const mode = btn.getAttribute('data-align') as AlignMode;
+      alignElement(el, mode);
+      canvasManager.updateOverlayPosition();
+      const html = canvasManager.getContent();
+      projectPages[activePageName] = html;
+      codeEditorManager.setCode(html);
+      pushUndoState();
     });
   });
 
