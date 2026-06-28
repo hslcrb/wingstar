@@ -6,6 +6,7 @@ import { parseSVG, VectorNode } from './editor/svg-parser';
 import { compileVectorToHTML } from './editor/vector-compiler';
 import { initPanelResizers } from './editor/panel-resizer';
 import { DrawingToolManager, DrawMode } from './editor/drawing-tool';
+import { LayerPanel } from './editor/layer-panel';
 import { defaultHTML } from './editor/templates';
 import confetti from 'canvas-confetti';
 import { ElectronAPI } from '../main/preload';
@@ -412,93 +413,25 @@ ${pathsMarkup}
   });
 
   // ─────────────────────────────────────────────
-  // 11. Vector Layers Tree Renderer
+  // 11. Layer Panel (Universal DOM Tree)
   // ─────────────────────────────────────────────
-  function renderLayersTree() {
-    const treeContainer = document.getElementById('vector-layers-tree') as HTMLElement;
-    const badge = document.getElementById('vector-status') as HTMLElement;
-    
-    if (!activeVectorRoot) {
-      treeContainer.innerHTML = '<div class="tree-placeholder">No vector imported. Drag &amp; Drop a .svg or .eps file or click "Import Vector" to load.</div>';
-      badge.textContent = 'Empty';
-      return;
+  const layerPanel = new LayerPanel('vector-layers-tree', 'vector-status', {
+    onSelect: (el) => canvasManager.selectElement(el),
+    onReorder: () => {
+      const html = canvasManager.getContent();
+      projectPages[activePageName] = html;
+      codeEditorManager.setCode(html);
     }
+  });
 
-    treeContainer.innerHTML = '';
-    badge.textContent = 'Loaded';
-
-    const buildTreeHTML = (node: VectorNode, depth: number): HTMLElement => {
-      const itemEl = document.createElement('div');
-      itemEl.className = 'layer-tree-item';
-      itemEl.style.paddingLeft = `${depth * 14 + 8}px`;
-      itemEl.setAttribute('data-vnode-id', node.id);
-
-      const hasId = node.svgId !== undefined;
-
-      itemEl.innerHTML = `
-        <div class="layer-info">
-          <span class="layer-icon">${node.type}</span>
-          <span class="layer-name">${node.name}</span>
-        </div>
-        ${hasId ? `<span class="layer-id-badge">${node.svgId}</span>` : ''}
-      `;
-
-      itemEl.addEventListener('click', (e) => {
-        e.stopPropagation();
-        
-        treeContainer.querySelectorAll('.layer-tree-item').forEach(el => el.classList.remove('selected'));
-        itemEl.classList.add('selected');
-
-        const iframeDoc = (document.getElementById('editor-frame') as HTMLIFrameElement).contentDocument;
-        if (iframeDoc) {
-          const nodeOffset = parseInt(node.id.split('-')[1]);
-          const matchEl = iframeDoc.querySelector(`[data-vnode-id^="vtrack-"][data-vnode-id$="-${nodeOffset}"]`);
-          if (matchEl) {
-            canvasManager.selectElement(matchEl as HTMLElement);
-          }
-        }
-      });
-
-      return itemEl;
-    };
-
-    const renderNodeRecursive = (node: VectorNode, depth: number) => {
-      const itemNode = buildTreeHTML(node, depth);
-      treeContainer.appendChild(itemNode);
-
-      if (node.children) {
-        node.children.forEach(child => renderNodeRecursive(child, depth + 1));
-      }
-    };
-
-    renderNodeRecursive(activeVectorRoot, 0);
+  function refreshLayerPanel() {
+    const iframe = document.getElementById('editor-frame') as HTMLIFrameElement;
+    const doc = iframe.contentDocument || iframe.contentWindow?.document;
+    layerPanel.refresh(doc, canvasManager.getSelectedElement());
   }
 
   function updateVectorLayersTreeFromCanvas() {
-    const iframeDoc = (document.getElementById('editor-frame') as HTMLIFrameElement).contentDocument;
-    if (!iframeDoc) return;
-
-    const svg = iframeDoc.querySelector('svg:not(.wingstar-glow-logo)');
-    if (svg) {
-      let trackingCounter = 0;
-      const rootTrackAttr = svg.getAttribute('data-vnode-id');
-      
-      if (!rootTrackAttr) {
-        const assignTracking = (el: Element) => {
-          el.setAttribute('data-vnode-id', `vtrack-${Date.now()}-${trackingCounter++}`);
-          for (let i = 0; i < el.children.length; i++) {
-            assignTracking(el.children[i]);
-          }
-        };
-        assignTracking(svg);
-      }
-
-      activeVectorRoot = parseSVG(svg.outerHTML);
-      renderLayersTree();
-    } else {
-      activeVectorRoot = null;
-      renderLayersTree();
-    }
+    refreshLayerPanel();
   }
 
   // ─────────────────────────────────────────────

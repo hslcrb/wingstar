@@ -140,6 +140,10 @@ export class CanvasManager {
     return this.drawMode;
   }
 
+  public getSelectedElement(): HTMLElement | null {
+    return this.selectedElement;
+  }
+
   public selectElement(el: HTMLElement | null) {
     this.selectedElement = el;
     
