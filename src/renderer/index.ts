@@ -419,20 +419,25 @@ document.addEventListener('DOMContentLoaded', () => {
   // ─────────────────────────────────────────────
   const btnImportVector = document.getElementById('btn-import-vector') as HTMLElement;
   btnImportVector.addEventListener('click', async () => {
+    const loadingToast = document.getElementById('toast-message') as HTMLElement;
     try {
       const file = await window.electronAPI.openFile();
       if (!file) return;
 
+      if (loadingToast) {
+        loadingToast.textContent = 'Loading vector file…';
+        loadingToast.classList.remove('hidden', 'toast-error');
+        loadingToast.classList.add('toast-visible');
+      }
+
       let svgMarkup = '';
 
       if (file.isEPS) {
-        // Run custom stack PostScript parser
         const parsed = parseEPS(file.content);
-        
+
         if (parsed.rawSvg) {
           svgMarkup = parsed.rawSvg;
         } else {
-          // Wrap paths in responsive SVG container
           const pathsMarkup = parsed.paths.map(p => {
             const idAttr = p.id ? ` id="${p.id}" data-name="${p.id}"` : '';
             const fillAttr = p.fill ? ` fill="${p.fill}"` : ' fill="#ffffff"';
@@ -447,51 +452,43 @@ ${pathsMarkup}
 </svg>`;
         }
       } else {
-        // Standard SVG
         svgMarkup = file.content;
       }
 
       const shouldCompileToHtml = confirm(
-        "가져온 벡터(SVG/EPS) 데이터를 편집 가능한 순수 HTML 레이아웃(div, span, button)으로 즉시 변환하여 가져오겠습니까?\n\n[확인] - 편집 가능한 최적화 HTML 레이아웃으로 컴파일 변환\n[취소] - 원본 SVG로 삽입"
+        'Import vector data as editable HTML layout (div, span, button)?\n\n[OK] - Compile to editable HTML layout\n[Cancel] - Insert as raw SVG'
       );
 
+      if (loadingToast) {
+        loadingToast.textContent = shouldCompileToHtml ? 'Compiling HTML layout…' : 'Inserting vector…';
+      }
+
       const parser = new DOMParser();
+      const frameEl = document.getElementById('editor-frame') as HTMLIFrameElement;
 
       if (shouldCompileToHtml) {
-        // Run compiler
         const compiledHtml = compileVectorToHTML(svgMarkup);
-
-        // 기존 HTML 코드에 새 노드를 문자열로 삽입 (iframe 직접 DOM 조작 안 함)
         const currentHtml = canvasManager.getContent();
         const injected = currentHtml.replace('</body>', `\n${compiledHtml}\n</body>`);
 
-        canvasManager.setContent(injected);
-        projectPages[activePageName] = injected;
-        // setCode는 silent하게 — onCodeChanged 콜백을 유발하지 않도록
-        codeEditorManager.setCode(injected);
-
-        // iframe 로드 완료 후 첫 번째 추가된 노드를 선택
-        const frameEl = document.getElementById('editor-frame') as HTMLIFrameElement;
-        const selectAfterLoad = () => {
+        const afterLoad = () => {
+          frameEl.removeEventListener('load', afterLoad);
           const frameDoc = frameEl.contentDocument;
           if (frameDoc) {
             const inserted = frameDoc.querySelector('.compiled-vector-layout') as HTMLElement;
-            if (inserted) {
-              canvasManager.selectElement(inserted);
-            }
+            if (inserted) canvasManager.selectElement(inserted);
           }
-          frameEl.removeEventListener('load', selectAfterLoad);
+          projectPages[activePageName] = injected;
+          codeEditorManager.setCode(injected);
+          if (loadingToast) loadingToast.classList.remove('toast-visible');
+          confetti({ particleCount: 50, angle: 60, spread: 55, origin: { x: 0 } });
+          confetti({ particleCount: 50, angle: 120, spread: 55, origin: { x: 1 } });
+          const compTabBtn = document.querySelector('.tab-link[data-tab="tab-components"]') as HTMLElement;
+          if (compTabBtn) compTabBtn.click();
         };
-        frameEl.addEventListener('load', selectAfterLoad);
-
-        // Switch to layout components tab
-        const compTabBtn = document.querySelector('.tab-link[data-tab="tab-components"]') as HTMLElement;
-        if (compTabBtn) compTabBtn.click();
-
-        confetti({ particleCount: 50, angle: 60, spread: 55, origin: { x: 0 } });
-        confetti({ particleCount: 50, angle: 120, spread: 55, origin: { x: 1 } });
+        frameEl.addEventListener('load', afterLoad);
+        canvasManager.setContent(injected);
       } else {
-        // Inject tracking IDs and insert via HTML string to avoid iframe reload race condition
         const doc = parser.parseFromString(svgMarkup, 'image/svg+xml');
         const rootSvg = doc.querySelector('svg');
         if (!rootSvg) {
@@ -508,20 +505,12 @@ ${pathsMarkup}
           }
         };
         assignTrackingIds(rootSvg);
-
         const trackedSvgMarkup = rootSvg.outerHTML;
-
-        // 기존 HTML에 SVG를 문자열로 주입 → setContent로 iframe 재로드
         const currentHtml = canvasManager.getContent();
         const injected = currentHtml.replace('</body>', `\n${trackedSvgMarkup}\n</body>`);
 
-        canvasManager.setContent(injected);
-        projectPages[activePageName] = injected;
-        codeEditorManager.setCode(injected);
-
-        // iframe 로드 완료 후 삽입된 SVG 노드를 선택 상태로 설정
-        const frameEl = document.getElementById('editor-frame') as HTMLIFrameElement;
-        const selectSvgAfterLoad = () => {
+        const afterLoad = () => {
+          frameEl.removeEventListener('load', afterLoad);
           const frameDoc = frameEl.contentDocument;
           if (frameDoc) {
             const insertedSvg = frameDoc.querySelector(`[data-vnode-id^="vtrack-"]`) as HTMLElement;
@@ -529,19 +518,24 @@ ${pathsMarkup}
               canvasManager.selectElement(insertedSvg);
               activeVectorRoot = parseSVG(trackedSvgMarkup);
               renderLayersTree();
-
               const vectorsTabBtn = document.querySelector('.tab-link[data-tab="tab-vectors"]') as HTMLElement;
               if (vectorsTabBtn) vectorsTabBtn.click();
             }
           }
-          frameEl.removeEventListener('load', selectSvgAfterLoad);
+          projectPages[activePageName] = injected;
+          codeEditorManager.setCode(injected);
+          if (loadingToast) loadingToast.classList.remove('toast-visible');
+          confetti({ particleCount: 50, angle: 60, spread: 55, origin: { x: 0 } });
+          confetti({ particleCount: 50, angle: 120, spread: 55, origin: { x: 1 } });
         };
-        frameEl.addEventListener('load', selectSvgAfterLoad);
-
-        confetti({ particleCount: 50, angle: 60, spread: 55, origin: { x: 0 } });
-        confetti({ particleCount: 50, angle: 120, spread: 55, origin: { x: 1 } });
+        frameEl.addEventListener('load', afterLoad);
+        canvasManager.setContent(injected);
       }
     } catch (err: any) {
+      if (loadingToast) {
+        loadingToast.textContent = `Import failed: ${err.message}`;
+        loadingToast.classList.add('toast-error');
+      }
       alert(`Import error: ${err.message}`);
     }
   });

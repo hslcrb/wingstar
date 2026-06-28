@@ -161,6 +161,32 @@ h1, h2, h3, h4 {
   100% { transform: translateX(-100%); }
 }
 
+/* Toast Message (loading/error feedback) */
+.toast-message {
+  position: fixed;
+  top: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-panel);
+  border: 1px solid var(--primary-dark);
+  color: var(--text-main);
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  z-index: 9998;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+.toast-message.toast-error {
+  border-color: var(--error);
+  color: var(--error);
+}
+.toast-message.toast-visible {
+  display: block;
+}
+
 /* App Shell Layout */
 .app-layout {
   display: flex;
