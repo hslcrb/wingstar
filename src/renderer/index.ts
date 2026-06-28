@@ -437,12 +437,18 @@ ${pathsMarkup}
   // ─────────────────────────────────────────────
   // 11. Layer Panel (Universal DOM Tree)
   // ─────────────────────────────────────────────
+  let multiSelectedElements: HTMLElement[] = [];
   const layerPanel = new LayerPanel('vector-layers-tree', 'vector-status', {
-    onSelect: (el) => canvasManager.selectElement(el),
+    onSelect: (el) => { canvasManager.selectElement(el); multiSelectedElements = []; },
+    onMultiSelect: (els) => {
+      multiSelectedElements = els;
+      if (els.length > 0) canvasManager.selectElement(els[0]);
+    },
     onReorder: () => {
       const html = canvasManager.getContent();
       projectPages[activePageName] = html;
       codeEditorManager.setCode(html);
+      pushUndoState();
     }
   });
 

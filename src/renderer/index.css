@@ -573,6 +573,16 @@ h1, h2, h3, h4 {
   border-left: 2px solid var(--primary);
 }
 
+.layer-tree-item.dragging {
+  opacity: 0.4;
+}
+
+.layer-tree-item.drop-target {
+  outline: 2px solid #4fc3f7;
+  outline-offset: -2px;
+  background: rgba(79, 195, 247, 0.1);
+}
+
 .layer-info {
   display: flex;
   align-items: center;
