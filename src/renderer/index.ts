@@ -682,6 +682,61 @@ ${pathsMarkup}
         clipboardHTML = sel.outerHTML;
       }
     }
+    if (ctrl && e.key === 'g' && !e.shiftKey && !isInputFocused) {
+      e.preventDefault();
+      // Group: wrap selected element in a container div
+      const sel = canvasManager.getSelectedElement();
+      if (!sel || !sel.parentNode) return;
+      const iframe = document.getElementById('editor-frame') as HTMLIFrameElement;
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!doc) return;
+      const group = doc.createElement('div');
+      group.className = 'wingstar-group';
+      group.style.cssText = 'position:relative;border:1px dashed rgba(139,92,246,0.3);padding:4px;';
+      sel.parentNode.insertBefore(group, sel);
+      group.appendChild(sel);
+      canvasManager.selectElement(group);
+      const html = canvasManager.getContent();
+      projectPages[activePageName] = html;
+      codeEditorManager.setCode(html);
+      pushUndoState();
+    }
+    if (ctrl && e.key === 'g' && e.shiftKey && !isInputFocused) {
+      e.preventDefault();
+      // Ungroup: extract children of group
+      const sel = canvasManager.getSelectedElement();
+      if (!sel || sel.className !== 'wingstar-group' || !sel.parentNode) return;
+      const parent = sel.parentNode;
+      const children = Array.from(sel.children);
+      children.forEach(child => parent.insertBefore(child, sel));
+      sel.remove();
+      if (children.length > 0) {
+        canvasManager.selectElement(children[0] as HTMLElement);
+      } else {
+        canvasManager.selectElement(null);
+      }
+      const html = canvasManager.getContent();
+      projectPages[activePageName] = html;
+      codeEditorManager.setCode(html);
+      pushUndoState();
+    }
+    if (ctrl && e.key === 'a' && !isInputFocused) {
+      e.preventDefault();
+      const iframe = document.getElementById('editor-frame') as HTMLIFrameElement;
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!doc || !doc.body) return;
+      // Select the last meaningful child of body
+      const children = Array.from(doc.body.children).filter((c: Element) => {
+        const tag = c.tagName.toLowerCase();
+        return tag !== 'style' && tag !== 'script';
+      }) as HTMLElement[];
+      if (children.length > 0) {
+        const last = children[children.length - 1];
+        // Multi-select all children visually via layer panel
+        multiSelectedElements = children;
+        canvasManager.selectElement(last);
+      }
+    }
     if (ctrl && e.key === 'v' && !isInputFocused) {
       e.preventDefault();
       if (!clipboardHTML) return;
