@@ -43,9 +43,15 @@ WingStar Web Builder → Figma/Illustrator 대용 하이브리드 툴
 | 레이어 패널 드래그 재정렬 + Shift 멀티 선택 | 35a2794 |
 | 스마트 가이드 (Freeform absolute 드래그, Shift+드래그 리페어런트, Cyan 정렬 가이드라인) | 13a92b4 |
 | Ctrl+C/V 복사/붙여넣기 | 63f0afd |
+| 그룹/언그룹 (Ctrl+G, Ctrl+Shift+G) | cc50621 |
+| Ctrl+A 전체 선택 | cc50621 |
+| 컨텍스트 메뉴 (우클릭) | 8c98c36 |
+| HTML-only 프로젝트 저장/열기 (Ctrl+S, Ctrl+O) | 1fbf442 |
+| 단축키 도움말 모달 + Ctrl+D 토글 | 17f4c89 |
 
-## 다음 개발 우선순위
-1. 그룹/언그룹 (Ctrl+G)
-2. Ctrl+A 전체 선택
-3. 컨텍스트 메뉴 (우클릭)
-4. HTML-only 프로젝트 저장/열기
+## 브랜치
+`feat/figma-like-designer` — 머지 대기 중. 명령 시 `main`으로 머지 가능.
+
+## 최종 빌드
+- 19 modules transpiled
+- 21.43 KB CSS, 93.97 KB JS
