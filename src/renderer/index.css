@@ -746,11 +746,6 @@ h1, h2, h3, h4 {
   display: block;
 }
 
-.canvas-wrapper.live-mode {
-  box-shadow: 0 20px 50px rgba(34, 211, 238, 0.2);
-  outline: 2px solid var(--cyan);
-  outline-offset: 2px;
-}
 
 /* WYSIWYG Selection & Handles Overlay (rendered on top of frame wrapper) */
 .selection-overlay {
@@ -1109,12 +1104,6 @@ h1, h2, h3, h4 {
   box-shadow: 0 0 0 3px var(--primary), 0 20px 50px rgba(139, 92, 246, 0.3);
 }
 
-/* Live Mode Toggle Button Active State */
-.toggle-btn.live-active {
-  color: var(--cyan);
-  background: rgba(34, 211, 238, 0.1);
-  border-color: rgba(34, 211, 238, 0.3);
-}
 
 /* SVG Properties Group Highlighting */
 #group-svg-properties {

@@ -65,7 +65,7 @@
             <tr><td>Ctrl+A</td><td>전체 선택</td></tr>
             <tr><td>Ctrl+G</td><td>그룹</td></tr>
             <tr><td>Ctrl+Shift+G</td><td>그룹 해제</td></tr>
-            <tr><td>Ctrl+D</td><td>디자인/라이브 모드 전환</td></tr>
+            <tr><td>Ctrl+클릭</td><td>링크 열기 / 네이티브 동작</td></tr>
             <tr><td>Delete/Backspace</td><td>선택 요소 삭제</td></tr>
             <tr><td>Shift+클릭</td><td>다중 선택</td></tr>
             <tr><td>Shift+드래그</td><td>리페어런트 (DOM 이동)</td></tr>
@@ -149,11 +149,7 @@
             <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
           </button>
         </div>
-        <span class="divider"></span>
-        <button id="btn-toggle-live" class="toggle-btn" title="라이브 뷰로 전환 (브라우저 상호작용 테스트)">
-          <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="12" r="10"></circle><polygon points="10 8 16 12 10 16 10 8" fill="currentColor" stroke="none"></polygon></svg>
-          디자인
-        </button>
+        <!-- Unified mode: always design; Ctrl+click for native interaction -->
         <button id="btn-toggle-split" class="toggle-btn active" title="코드 편집기 토글">
           <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="12" y1="3" x2="12" y2="21"></line></svg>
         </button>

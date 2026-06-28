@@ -175,39 +175,10 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // ─────────────────────────────────────────────
-  // 8. Live / Design Mode Toggle
+  // 8. Unified Mode — always design + Ctrl+click for native
   // ─────────────────────────────────────────────
-  const btnToggleLive = document.getElementById('btn-toggle-live') as HTMLElement;
   const canvasWrapper = document.getElementById('canvas-wrapper') as HTMLElement;
-
-  btnToggleLive.addEventListener('click', () => {
-    const isCurrentlyLive = canvasManager.getLiveMode();
-    const willBeLive = !isCurrentlyLive;
-
-    canvasManager.setLiveMode(willBeLive);
-
-    if (willBeLive) {
-      btnToggleLive.classList.add('live-active');
-      btnToggleLive.innerHTML = `
-        <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none">
-          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-        </svg>
-        Live
-      `;
-      canvasWrapper.classList.add('live-mode');
-    } else {
-      btnToggleLive.classList.remove('live-active');
-      btnToggleLive.innerHTML = `
-        <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none">
-          <circle cx="12" cy="12" r="10"></circle>
-          <polygon points="10 8 16 12 10 16 10 8" fill="currentColor" stroke="none"></polygon>
-        </svg>
-        Design
-      `;
-      canvasWrapper.classList.remove('live-mode');
-    }
-  });
+  // Always in design mode; Ctrl+click passes through to iframe for links/forms
 
   // ─────────────────────────────────────────────
   // 9. Multi-Page Project Management
@@ -905,11 +876,6 @@ ${pathsMarkup}
       projectPages[activePageName] = html;
       codeEditorManager.setCode(html);
       pushUndoState();
-    }
-    if (ctrl && e.key === 'd' && !isInputFocused) {
-      e.preventDefault();
-      const btn = document.getElementById('btn-toggle-live') as HTMLButtonElement;
-      if (btn) btn.click();
     }
     if (ctrl && e.key === 'a' && !isInputFocused) {
       e.preventDefault();

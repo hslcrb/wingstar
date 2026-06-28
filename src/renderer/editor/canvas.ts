@@ -9,7 +9,6 @@ export class CanvasManager {
   private label: HTMLElement;
   private deleteBtn: HTMLElement;
   private selectedElement: HTMLElement | null = null;
-  private isLiveMode = false;
   private drawMode: DrawMode = 'select';
   
   private onElementSelectedCallback: ((el: HTMLElement | null) => void) | null = null;
@@ -101,40 +100,6 @@ export class CanvasManager {
     this.onContextMenuCallback = callback;
   }
 
-  /**
-   * Switches between Live mode (native browser interactions) and Design mode (editing).
-   */
-  public setLiveMode(enabled: boolean) {
-    this.isLiveMode = enabled;
-    const doc = this.iframe.contentDocument || this.iframe.contentWindow?.document;
-
-    if (enabled) {
-      // Hide selection overlay
-      this.selectElement(null);
-      // Let iframe receive mouse events natively
-      this.iframe.style.pointerEvents = 'auto';
-      this.iframe.style.cursor = 'default';
-      // Remove design-mode event listeners from iframe doc
-      if (doc) {
-        if (this.boundClickHandler) doc.removeEventListener('click', this.boundClickHandler as any);
-        if (this.boundDblClickHandler) doc.removeEventListener('dblclick', this.boundDblClickHandler as any);
-        if (this.boundDragOverHandler) doc.removeEventListener('dragover', this.boundDragOverHandler as any);
-        if (this.boundDragLeaveHandler) doc.removeEventListener('dragleave', this.boundDragLeaveHandler as any);
-        if (this.boundDropHandler) doc.removeEventListener('drop', this.boundDropHandler as any);
-      }
-    } else {
-      // Restore design mode
-      this.iframe.style.pointerEvents = '';
-      this.iframe.style.cursor = '';
-      // Re-bind iframe events
-      this.bindIframeEvents();
-    }
-  }
-
-  public getLiveMode(): boolean {
-    return this.isLiveMode;
-  }
-
   public setDrawMode(mode: DrawMode) {
     this.drawMode = mode;
     if (mode !== 'select') {
@@ -201,9 +166,6 @@ export class CanvasManager {
     const doc = this.iframe.contentDocument || this.iframe.contentWindow?.document;
     if (!doc) return;
 
-    // Skip if we're in live mode
-    if (this.isLiveMode) return;
-
     // Remove any previously-registered handlers first to avoid duplicates
     if (this.boundClickHandler) doc.removeEventListener('click', this.boundClickHandler as any);
     if (this.boundDblClickHandler) doc.removeEventListener('dblclick', this.boundDblClickHandler as any);
@@ -211,9 +173,10 @@ export class CanvasManager {
     if (this.boundDragLeaveHandler) doc.removeEventListener('dragleave', this.boundDragLeaveHandler as any);
     if (this.boundDropHandler) doc.removeEventListener('drop', this.boundDropHandler as any);
 
-    // Handle clicks for selection (bypass when drawing)
+    // Handle clicks for selection (bypass when drawing, pass through on Ctrl+click for native behavior)
     this.boundClickHandler = (e: MouseEvent) => {
       if (this.drawMode !== 'select') return;
+      if (e.ctrlKey || e.metaKey) return; // let native behavior through (links, etc.)
       e.preventDefault();
       e.stopPropagation();
       const target = e.target as HTMLElement;
