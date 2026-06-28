@@ -1277,6 +1277,50 @@ h1, h2, h3, h4 {
   font-family: var(--font-mono);
 }
 
+/* Context Menu */
+.context-menu {
+  background: #2a2a2e;
+  border: 1px solid #3a3a3f;
+  border-radius: 8px;
+  padding: 4px;
+  min-width: 180px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  font-size: 0.8rem;
+}
+
+.context-menu-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-main);
+  transition: background 0.1s;
+  gap: 24px;
+}
+
+.context-menu-item:hover {
+  background: var(--primary);
+  color: #fff;
+}
+
+.context-menu-item .cm-shortcut {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-family: var(--font-mono);
+}
+
+.context-menu-item:hover .cm-shortcut {
+  color: rgba(255,255,255,0.7);
+}
+
+.context-menu-separator {
+  height: 1px;
+  background: var(--border-color);
+  margin: 4px 8px;
+}
+
 /* Drawing Tool Buttons */
 .draw-tool-group {
   display: flex;

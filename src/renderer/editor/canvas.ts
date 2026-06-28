@@ -14,6 +14,7 @@ export class CanvasManager {
   
   private onElementSelectedCallback: ((el: HTMLElement | null) => void) | null = null;
   private onCanvasChangedCallback: ((html: string) => void) | null = null;
+  private onContextMenuCallback: ((e: MouseEvent, el: HTMLElement | null) => void) | null = null;
 
   // Bound event handlers stored for removal in live mode
   private boundClickHandler: ((e: MouseEvent) => void) | null = null;
@@ -94,6 +95,10 @@ export class CanvasManager {
 
   public onCanvasChanged(callback: (html: string) => void) {
     this.onCanvasChangedCallback = callback;
+  }
+
+  public onContextMenu(callback: (e: MouseEvent, el: HTMLElement | null) => void) {
+    this.onContextMenuCallback = callback;
   }
 
   /**
@@ -287,6 +292,17 @@ export class CanvasManager {
       this.notifyChanges();
     };
     doc.addEventListener('drop', this.boundDropHandler as any);
+
+    // Context menu
+    if (this.onContextMenuCallback) {
+      doc.addEventListener('contextmenu', (e: MouseEvent) => {
+        e.preventDefault();
+        const target = e.target as HTMLElement;
+        let el: HTMLElement | null = target;
+        if (!target || target === doc.body || target === doc.documentElement) el = null;
+        this.onContextMenuCallback!(e, el);
+      });
+    }
   }
 
   private setupResizeListeners() {

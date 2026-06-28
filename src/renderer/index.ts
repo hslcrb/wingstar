@@ -9,6 +9,7 @@ import { DrawingToolManager, DrawMode } from './editor/drawing-tool';
 import { alignElement, AlignMode } from './editor/alignment';
 import { LayerPanel } from './editor/layer-panel';
 import { UndoManager } from './editor/undo-manager';
+import { ContextMenu } from './editor/context-menu';
 import { defaultHTML } from './editor/templates';
 import confetti from 'canvas-confetti';
 import { ElectronAPI } from '../main/preload';
@@ -660,7 +661,91 @@ ${pathsMarkup}
   let clipboardHTML: string | null = null;
 
   // ─────────────────────────────────────────────
-  // 18. Keyboard Shortcuts
+  // 18. Context Menu
+  // ─────────────────────────────────────────────
+  const contextMenu = new ContextMenu({
+    copy: () => {
+      const sel = canvasManager.getSelectedElement();
+      if (sel) clipboardHTML = sel.outerHTML;
+    },
+    paste: () => {
+      if (!clipboardHTML) return;
+      const iframe = document.getElementById('editor-frame') as HTMLIFrameElement;
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!doc) return;
+      const temp = doc.createElement('div');
+      temp.innerHTML = clipboardHTML;
+      const clone = temp.firstElementChild as HTMLElement;
+      if (!clone) return;
+      doc.body.appendChild(clone);
+      canvasManager.selectElement(clone);
+      const html = canvasManager.getContent();
+      projectPages[activePageName] = html;
+      codeEditorManager.setCode(html);
+      pushUndoState();
+    },
+    delete: () => {
+      const sel = canvasManager.getSelectedElement();
+      if (sel && sel.parentNode) {
+        sel.remove();
+        canvasManager.selectElement(null);
+        const html = canvasManager.getContent();
+        projectPages[activePageName] = html;
+        codeEditorManager.setCode(html);
+        pushUndoState();
+      }
+    },
+    group: () => {
+      const sel = canvasManager.getSelectedElement();
+      if (!sel || !sel.parentNode) return;
+      const iframe = document.getElementById('editor-frame') as HTMLIFrameElement;
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!doc) return;
+      const group = doc.createElement('div');
+      group.className = 'wingstar-group';
+      group.style.cssText = 'position:relative;border:1px dashed rgba(139,92,246,0.3);padding:4px;';
+      sel.parentNode.insertBefore(group, sel);
+      group.appendChild(sel);
+      canvasManager.selectElement(group);
+      const html = canvasManager.getContent();
+      projectPages[activePageName] = html;
+      codeEditorManager.setCode(html);
+      pushUndoState();
+    },
+    ungroup: () => {
+      const sel = canvasManager.getSelectedElement();
+      if (!sel || sel.className !== 'wingstar-group' || !sel.parentNode) return;
+      const parent = sel.parentNode;
+      const children = Array.from(sel.children);
+      children.forEach(child => parent.insertBefore(child, sel));
+      sel.remove();
+      if (children.length > 0) canvasManager.selectElement(children[0] as HTMLElement);
+      else canvasManager.selectElement(null);
+      const html = canvasManager.getContent();
+      projectPages[activePageName] = html;
+      codeEditorManager.setCode(html);
+      pushUndoState();
+    },
+    align: (mode: string) => {
+      const el = canvasManager.getSelectedElement();
+      if (!el) return;
+      alignElement(el, mode as AlignMode);
+      canvasManager.updateOverlayPosition();
+      const html = canvasManager.getContent();
+      projectPages[activePageName] = html;
+      codeEditorManager.setCode(html);
+      pushUndoState();
+    },
+  });
+
+  // Bind context menu via canvas callback
+  canvasManager.onContextMenu((e: MouseEvent, el: HTMLElement | null) => {
+    if (el) canvasManager.selectElement(el);
+    contextMenu.show(e.clientX, e.clientY, canvasManager.getSelectedElement());
+  });
+
+  // ─────────────────────────────────────────────
+  // 19. Keyboard Shortcuts
   // ─────────────────────────────────────────────
   document.addEventListener('keydown', (e) => {
     const ctrl = e.ctrlKey || e.metaKey;
