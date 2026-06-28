@@ -655,10 +655,17 @@ ${pathsMarkup}
   }, { passive: false });
 
   // ─────────────────────────────────────────────
-  // 17. Keyboard Shortcuts
+  // 17. Copy/Paste buffer
+  // ─────────────────────────────────────────────
+  let clipboardHTML: string | null = null;
+
+  // ─────────────────────────────────────────────
+  // 18. Keyboard Shortcuts
   // ─────────────────────────────────────────────
   document.addEventListener('keydown', (e) => {
     const ctrl = e.ctrlKey || e.metaKey;
+    const active = document.activeElement;
+    const isInputFocused = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT' || active.isContentEditable);
 
     if (ctrl && e.key === 'z' && !e.shiftKey) {
       e.preventDefault();
@@ -668,9 +675,31 @@ ${pathsMarkup}
       e.preventDefault();
       undoManager.redo();
     }
-    if ((e.key === 'Delete' || e.key === 'Backspace') && !ctrl) {
-      const active = document.activeElement;
-      if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT' || active.isContentEditable)) return;
+    if (ctrl && e.key === 'c' && !isInputFocused) {
+      e.preventDefault();
+      const sel = canvasManager.getSelectedElement();
+      if (sel) {
+        clipboardHTML = sel.outerHTML;
+      }
+    }
+    if (ctrl && e.key === 'v' && !isInputFocused) {
+      e.preventDefault();
+      if (!clipboardHTML) return;
+      const iframe = document.getElementById('editor-frame') as HTMLIFrameElement;
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!doc) return;
+      const temp = doc.createElement('div');
+      temp.innerHTML = clipboardHTML;
+      const clone = temp.firstElementChild as HTMLElement;
+      if (!clone) return;
+      doc.body.appendChild(clone);
+      canvasManager.selectElement(clone);
+      const html = canvasManager.getContent();
+      projectPages[activePageName] = html;
+      codeEditorManager.setCode(html);
+      pushUndoState();
+    }
+    if ((e.key === 'Delete' || e.key === 'Backspace') && !ctrl && !isInputFocused) {
       e.preventDefault();
       const sel = canvasManager.getSelectedElement();
       if (sel && sel.parentNode) {
