@@ -1436,3 +1436,252 @@ h1, h2, h3, h4 {
   background: var(--primary-dark);
   box-shadow: 0 0 8px var(--primary-glow);
 }
+
+/* ========= CSS Class Manager ========= */
+.class-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+  min-height: 20px;
+}
+
+.class-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-color);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  color: var(--cyan);
+}
+
+.class-remove-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.8rem;
+  padding: 0 2px;
+  line-height: 1;
+}
+
+.class-remove-btn:hover {
+  color: var(--error);
+}
+
+.class-input-wrapper {
+  display: flex;
+}
+
+.class-input {
+  width: 100%;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+}
+
+.class-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 5px var(--primary-glow);
+}
+
+/* ========= Link Properties ========= */
+#group-link-props {
+  border-color: var(--cyan);
+  background: rgba(34, 211, 238, 0.02);
+}
+
+#group-link-props .group-title {
+  border-bottom-color: var(--cyan);
+  color: var(--cyan);
+}
+
+/* ========= Style Presets ========= */
+.preset-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.preset-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.preset-item:hover {
+  border-color: var(--primary);
+  background: var(--bg-hover);
+}
+
+.preset-name {
+  font-size: 0.75rem;
+  color: var(--text-main);
+}
+
+.preset-delete-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.7rem;
+  padding: 2px 4px;
+}
+
+.preset-delete-btn:hover {
+  color: var(--error);
+}
+
+.preset-save-row {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.preset-save-input {
+  flex: 1;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  border-radius: 4px;
+}
+
+.preset-save-btn {
+  background: var(--primary-dark);
+  border: none;
+  color: #fff;
+  padding: 4px 10px;
+  font-size: 0.7rem;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.preset-save-btn:hover {
+  background: var(--primary);
+}
+
+/* ========= Component Library ========= */
+.comp-lib-empty {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 16px 8px;
+  line-height: 1.4;
+}
+
+.comp-lib-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-bottom: 4px;
+  cursor: grab;
+  transition: all 0.15s ease;
+  font-size: 0.8rem;
+  color: var(--text-main);
+}
+
+.comp-lib-item:hover {
+  border-color: var(--primary);
+  background: var(--bg-hover);
+}
+
+.comp-lib-item:active {
+  cursor: grabbing;
+}
+
+.comp-lib-del {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.8rem;
+  padding: 2px 4px;
+}
+
+.comp-lib-del:hover {
+  color: var(--error);
+}
+
+.comp-lib-save-area {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-color);
+}
+
+.comp-lib-save-btn {
+  width: 100%;
+  background: var(--bg-hover);
+  border: 1px dashed var(--border-color);
+  color: var(--text-muted);
+  padding: 6px;
+  font-size: 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s ease;
+}
+
+.comp-lib-save-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: rgba(139, 92, 246, 0.05);
+}
+
+/* ========= Ruler Guide Lines ========= */
+.ruler-guide {
+  position: absolute;
+  z-index: 25;
+  pointer-events: auto;
+}
+
+.ruler-guide.horizontal {
+  left: 0;
+  right: 0;
+  height: 2px;
+  cursor: ns-resize;
+  background: rgba(34, 211, 238, 0.7);
+  box-shadow: 0 0 6px rgba(34, 211, 238, 0.4);
+}
+
+.ruler-guide.vertical {
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  cursor: ew-resize;
+  background: rgba(34, 211, 238, 0.7);
+  box-shadow: 0 0 6px rgba(34, 211, 238, 0.4);
+}
+
+/* ========= Style Preset Group Highlight ========= */
+#group-style-presets {
+  border-color: var(--accent);
+  background: rgba(251, 191, 36, 0.02);
+}
+
+#group-style-presets .group-title {
+  border-bottom-color: var(--accent-dark);
+  color: var(--accent);
+}
