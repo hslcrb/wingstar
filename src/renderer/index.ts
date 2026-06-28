@@ -7,6 +7,7 @@ import { compileVectorToHTML } from './editor/vector-compiler';
 import { initPanelResizers } from './editor/panel-resizer';
 import { DrawingToolManager, DrawMode } from './editor/drawing-tool';
 import { LayerPanel } from './editor/layer-panel';
+import { UndoManager } from './editor/undo-manager';
 import { defaultHTML } from './editor/templates';
 import confetti from 'canvas-confetti';
 import { ElectronAPI } from '../main/preload';
@@ -54,7 +55,24 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // ─────────────────────────────────────────────
-  // 4. Bidirectional Syncing
+  // 4. Undo/Redo Manager
+  // ─────────────────────────────────────────────
+  const undoManager = new UndoManager({
+    onRestore: (html) => {
+      canvasManager.setContent(html);
+      codeEditorManager.setCode(html);
+      projectPages[activePageName] = html;
+      updateVectorLayersTreeFromCanvas();
+    }
+  });
+
+  function pushUndoState() {
+    const html = canvasManager.getContent();
+    if (html) undoManager.pushState(html);
+  }
+
+  // ─────────────────────────────────────────────
+  // 5. Bidirectional Syncing
   // ─────────────────────────────────────────────
 
   // Canvas interactions update Property Inspector & Code Editor
@@ -66,6 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
     projectPages[activePageName] = newHTML;
     codeEditorManager.setCode(newHTML);
     updateVectorLayersTreeFromCanvas();
+    pushUndoState();
   });
 
   // Property Inspector updates sync back to Visual Canvas
@@ -74,6 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const currentHTML = canvasManager.getContent();
     projectPages[activePageName] = currentHTML;
     codeEditorManager.setCode(currentHTML);
+    pushUndoState();
   });
 
   // Code editor typing updates Visual Canvas (debounced to avoid iframe flashing)
@@ -94,6 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
         syncStatus.style.color = 'var(--success)';
       }
       updateVectorLayersTreeFromCanvas();
+      pushUndoState();
     }, DEBOUNCE_DELAY);
   });
 
@@ -573,9 +594,40 @@ ${pathsMarkup}
     const doc = iframe.contentDocument || iframe.contentWindow?.document;
     if (doc && doc.body) {
       drawingTool.setIframeDoc(doc);
+      pushUndoState();
     } else {
       setTimeout(initIframeDoc, 100);
     }
   };
   initIframeDoc();
+
+  // ─────────────────────────────────────────────
+  // 15. Keyboard Shortcuts
+  // ─────────────────────────────────────────────
+  document.addEventListener('keydown', (e) => {
+    const ctrl = e.ctrlKey || e.metaKey;
+
+    if (ctrl && e.key === 'z' && !e.shiftKey) {
+      e.preventDefault();
+      undoManager.undo();
+    }
+    if (ctrl && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+      e.preventDefault();
+      undoManager.redo();
+    }
+    if ((e.key === 'Delete' || e.key === 'Backspace') && !ctrl) {
+      const active = document.activeElement;
+      if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT' || active.isContentEditable)) return;
+      e.preventDefault();
+      const sel = canvasManager.getSelectedElement();
+      if (sel && sel.parentNode) {
+        sel.remove();
+        canvasManager.selectElement(null);
+        const html = canvasManager.getContent();
+        projectPages[activePageName] = html;
+        codeEditorManager.setCode(html);
+        pushUndoState();
+      }
+    }
+  });
 });
