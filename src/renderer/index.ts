@@ -354,7 +354,6 @@ ${pathsMarkup}
         const injected = currentHtml.replace('</body>', `\n${compiledHtml}\n</body>`);
 
         const afterLoad = () => {
-          frameEl.removeEventListener('load', afterLoad);
           const frameDoc = frameEl.contentDocument;
           if (frameDoc) {
             const inserted = frameDoc.querySelector('.compiled-vector-layout') as HTMLElement;
@@ -368,8 +367,7 @@ ${pathsMarkup}
           const compTabBtn = document.querySelector('.tab-link[data-tab="tab-components"]') as HTMLElement;
           if (compTabBtn) compTabBtn.click();
         };
-        frameEl.addEventListener('load', afterLoad);
-        canvasManager.setContent(injected);
+        canvasManager.setContent(injected, afterLoad);
       } else {
         const doc = parser.parseFromString(svgMarkup, 'image/svg+xml');
         const rootSvg = doc.querySelector('svg');
@@ -392,7 +390,6 @@ ${pathsMarkup}
         const injected = currentHtml.replace('</body>', `\n${trackedSvgMarkup}\n</body>`);
 
         const afterLoad = () => {
-          frameEl.removeEventListener('load', afterLoad);
           const frameDoc = frameEl.contentDocument;
           if (frameDoc) {
             const insertedSvg = frameDoc.querySelector(`[data-vnode-id^="vtrack-"]`) as HTMLElement;
@@ -409,8 +406,7 @@ ${pathsMarkup}
           confetti({ particleCount: 50, angle: 60, spread: 55, origin: { x: 0 } });
           confetti({ particleCount: 50, angle: 120, spread: 55, origin: { x: 1 } });
         };
-        frameEl.addEventListener('load', afterLoad);
-        canvasManager.setContent(injected);
+        canvasManager.setContent(injected, afterLoad);
       }
     } catch (err: any) {
       if (loadingToast) {
@@ -585,18 +581,15 @@ ${pathsMarkup}
 
   // Sync iframe document with drawing tool on canvas content changes
   const originalSetContent = canvasManager.setContent.bind(canvasManager);
-  canvasManager.setContent = (html: string) => {
-    originalSetContent(html);
-    const iframe = document.getElementById('editor-frame') as HTMLIFrameElement;
-    const checkDoc = () => {
+  canvasManager.setContent = (html: string, onReady?: () => void) => {
+    originalSetContent(html, () => {
+      const iframe = document.getElementById('editor-frame') as HTMLIFrameElement;
       const doc = iframe.contentDocument || iframe.contentWindow?.document;
       if (doc && doc.body) {
         drawingTool.setIframeDoc(doc);
-      } else {
-        setTimeout(checkDoc, 50);
       }
-    };
-    checkDoc();
+      if (onReady) onReady();
+    });
   };
 
   // Initial iframe doc sync

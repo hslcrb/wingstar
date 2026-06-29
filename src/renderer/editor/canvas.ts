@@ -47,7 +47,7 @@ export class CanvasManager {
     });
   }
 
-  public setContent(html: string) {
+  public setContent(html: string, onReady?: () => void) {
     this.selectElement(null);
 
     const doc = this.iframe.contentDocument || this.iframe.contentWindow?.document;
@@ -57,15 +57,24 @@ export class CanvasManager {
     }
 
     try {
-      this.iframe.onload = () => {
-        this.bindIframeEvents();
-      };
       doc.open();
       doc.write(html);
       doc.close();
     } catch (err) {
       console.error('[Canvas] setContent failed:', err);
+      return;
     }
+
+    const pollReady = () => {
+      const d = this.iframe.contentDocument || this.iframe.contentWindow?.document;
+      if (d && d.body) {
+        this.bindIframeEvents();
+        if (onReady) onReady();
+      } else {
+        setTimeout(pollReady, 50);
+      }
+    };
+    pollReady();
   }
 
   public getContent(): string {
