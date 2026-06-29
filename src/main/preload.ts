@@ -7,6 +7,7 @@ export interface ElectronAPI {
     fileName: string;
     isEPS: boolean;
   } | null>;
+  openImage: () => Promise<{ name: string; dataUrl: string; type: string }[] | null>;
   saveHTML: (defaultName: string, content: string) => Promise<{
     success: boolean;
     filePath: string;
@@ -20,6 +21,7 @@ export interface ElectronAPI {
 
 const api: ElectronAPI = {
   openFile: () => ipcRenderer.invoke('dialog:openFile'),
+  openImage: () => ipcRenderer.invoke('dialog:openImage'),
   saveHTML: (defaultName: string, content: string) => ipcRenderer.invoke('dialog:saveHTML', { defaultName, content }),
   exportProject: (payload: { pages: { [filename: string]: string }; css: string }) =>
     ipcRenderer.invoke('dialog:exportProject', payload),

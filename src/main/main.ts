@@ -38,6 +38,32 @@ function createWindow() {
 app.whenReady().then(() => {
   // Register IPC handlers
   
+  // Handler for opening image files
+  ipcMain.handle('dialog:openImage', async () => {
+    if (!mainWindow) return null;
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: 'Open Image File',
+      properties: ['openFile', 'multiSelections'],
+      filters: [
+        { name: 'Images (*.png, *.jpg, *.jpeg, *.gif, *.svg, *.webp)', extensions: ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'ico'] }
+      ]
+    });
+    if (result.canceled || result.filePaths.length === 0) return null;
+    const assets: { name: string; dataUrl: string; type: string }[] = [];
+    for (const filePath of result.filePaths) {
+      try {
+        const ext = path.extname(filePath).toLowerCase().slice(1);
+        const buffer = fs.readFileSync(filePath);
+        const base64 = buffer.toString('base64');
+        const mime = ext === 'svg' ? 'image/svg+xml' : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+        assets.push({ name: path.basename(filePath), dataUrl: `data:${mime};base64,${base64}`, type: ext });
+      } catch (err: any) {
+        console.error('Failed to read image:', err);
+      }
+    }
+    return assets.length > 0 ? assets : null;
+  });
+
   // Handler for opening files (SVG/EPS)
   ipcMain.handle('dialog:openFile', async () => {
     if (!mainWindow) return null;

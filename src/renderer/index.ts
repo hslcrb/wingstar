@@ -16,6 +16,9 @@ import { initRulerGuides, clearAllGuides } from './editor/ruler-guide';
 import { defaultHTML } from './editor/templates';
 import confetti from 'canvas-confetti';
 import { ElectronAPI } from '../main/preload';
+import { initAssets, getAssets } from './editor/assets-panel';
+import { initHistoryPanel } from './editor/history-panel';
+import { CssDesigner } from './editor/css-designer';
 
 declare global {
   interface Window {
@@ -74,6 +77,18 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ─────────────────────────────────────────────
+  // 4b. CSS Designer
+  // ─────────────────────────────────────────────
+  const cssDesigner = new CssDesigner('group-css-designer');
+  cssDesigner.onStyleChanged(() => {
+    canvasManager.updateOverlayPosition();
+    const currentHTML = canvasManager.getContent();
+    projectPages[activePageName] = currentHTML;
+    codeEditorManager.setCode(currentHTML);
+    pushUndoState();
+  });
+
+  // ─────────────────────────────────────────────
   // 5. Class Manager & Style Presets
   // ─────────────────────────────────────────────
   const classManager = new ClassManager('group-css-classes');
@@ -91,6 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Canvas interactions update Property Inspector & Code Editor
   canvasManager.onElementSelected((el) => {
     propertiesManager.bindElement(el);
+    cssDesigner.bind(el);
     classManager.bind(el);
     bindLinkProps(el);
     refreshPresetList();
@@ -295,6 +311,35 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initial render
   renderPagesList();
   refreshComponentLibrary();
+
+  // Initialize Assets Panel & History Panel
+  initAssets();
+  initHistoryPanel(undoManager);
+
+  canvasManager.onAssetDrop((assetUrl: string, targetEl: HTMLElement | null) => {
+    const iframe = document.getElementById('editor-frame') as HTMLIFrameElement;
+    const doc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (!doc) return;
+    const img = doc.createElement('img');
+    img.src = assetUrl;
+    img.style.maxWidth = '100%';
+    img.alt = 'Imported asset';
+    if (targetEl && targetEl.tagName !== 'BODY' && targetEl.tagName !== 'HTML' && targetEl.parentNode) {
+      const containerTags = ['section', 'div', 'header', 'footer', 'main', 'aside', 'figure'];
+      if (containerTags.includes(targetEl.tagName.toLowerCase())) {
+        targetEl.appendChild(img);
+      } else {
+        targetEl.parentNode.insertBefore(img, targetEl.nextSibling);
+      }
+    } else {
+      doc.body.appendChild(img);
+    }
+    canvasManager.selectElement(img);
+    const html = canvasManager.getContent();
+    projectPages[activePageName] = html;
+    codeEditorManager.setCode(html);
+    pushUndoState();
+  });
 
   // ─────────────────────────────────────────────
   // 11. Vector Graphics Importer (SVG & EPS)

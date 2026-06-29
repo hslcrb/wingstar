@@ -165,6 +165,7 @@
       <aside class="sidebar left-sidebar">
         <nav class="sidebar-tabs">
           <button class="tab-link active" data-tab="tab-components">컴포넌트</button>
+          <button class="tab-link" data-tab="tab-assets">에셋</button>
           <button class="tab-link" data-tab="tab-vectors">벡터</button>
           <button class="tab-link" data-tab="tab-pages">페이지</button>
         </nav>
@@ -199,6 +200,22 @@
             <div class="comp-lib-save-area">
               <button class="comp-lib-save-btn" id="btn-save-component">+ 현재 선택을 컴포넌트로 저장</button>
             </div>
+          </div>
+        </div>
+
+        <div class="tab-content" id="tab-assets">
+          <div class="sidebar-section">
+            <div class="section-header">
+              <h3>이미지 에셋</h3>
+              <span id="asset-count" class="status-badge">0</span>
+            </div>
+            <div class="asset-upload-row">
+              <button id="btn-import-image" class="action-btn-sm fill">이미지 가져오기</button>
+            </div>
+            <div class="assets-grid" id="assets-grid">
+              <div class="asset-empty">이미지를 드래그하거나 가져오기 버튼을 클릭하세요</div>
+            </div>
+            <p class="section-desc" style="margin-top:8px">드래그하여 캔버스에 삽입하거나 URL 복사</p>
           </div>
         </div>
 
@@ -477,6 +494,53 @@
               </div>
             </div>
 
+          </div>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="section-header">
+            <h3>히스토리</h3>
+            <span id="history-count" class="status-badge">0/0</span>
+          </div>
+          <div class="history-list" id="history-list">
+            <div class="history-empty">기록 없음</div>
+          </div>
+        </div>
+
+        <!-- CSS Designer -->
+        <div class="inspector-group hidden" id="group-css-designer">
+          <label class="group-title">CSS 디자이너</label>
+          <div class="group-body css-designer-body" id="css-designer-body">
+            <div class="css-section">
+              <div class="css-section-title">Typography</div>
+              <div class="css-field"><label>Font Family</label><select data-css-prop="font-family"><option value="__remove__">inherit</option><option value="Inter, system-ui, sans-serif">Inter</option><option value="Georgia, serif">Georgia</option><option value="'Courier New', monospace">Courier New</option></select></div>
+              <div class="css-field css-field-row"><div><label>Size</label><input type="text" data-css-prop="font-size" placeholder="16px"></div><div><label>Weight</label><select data-css-prop="font-weight"><option value="__remove__">inherit</option><option value="300">Light</option><option value="400">Regular</option><option value="600">SemiBold</option><option value="700">Bold</option></select></div></div>
+              <div class="css-field css-field-row"><div><label>Line H</label><input type="text" data-css-prop="line-height" placeholder="1.5"></div><div><label>Align</label><select data-css-prop="text-align"><option value="__remove__">inherit</option><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select></div></div>
+              <div class="css-field"><label>Color</label><input type="color" data-css-prop="color" style="width:100%;height:30px"></div>
+            </div>
+            <div class="css-section">
+              <div class="css-section-title">Background</div>
+              <div class="css-field"><label>Color</label><input type="color" data-css-prop="background-color" style="width:100%;height:30px"></div>
+            </div>
+            <div class="css-section">
+              <div class="css-section-title">Border</div>
+              <div class="css-field css-field-row"><div><label>Width</label><input type="text" data-css-prop="border-width" placeholder="0px"></div><div><label>Style</label><select data-css-prop="border-style"><option value="__remove__">none</option><option value="solid">solid</option><option value="dashed">dashed</option><option value="dotted">dotted</option></select></div></div>
+              <div class="css-field css-field-row"><div><label>Radius</label><input type="text" data-css-prop="border-radius" placeholder="0px"></div><div><label>Color</label><input type="color" data-css-prop="border-color" style="width:100%;height:30px;padding:0"></div></div>
+            </div>
+            <div class="css-section">
+              <div class="css-section-title">Spacing</div>
+              <div class="css-field css-field-row"><div><label>Margin</label><input type="text" data-css-prop="margin" placeholder="0px"></div><div><label>Padding</label><input type="text" data-css-prop="padding" placeholder="0px"></div></div>
+            </div>
+            <div class="css-section">
+              <div class="css-section-title">Layout</div>
+              <div class="css-field"><label>Display</label><select data-css-prop="display"><option value="__remove__">inherit</option><option value="block">Block</option><option value="inline-block">Inline-Block</option><option value="flex">Flex</option><option value="grid">Grid</option><option value="inline">Inline</option><option value="none">None</option></select></div>
+              <div class="css-field"><label>Position</label><select data-css-prop="position"><option value="__remove__">static</option><option value="relative">Relative</option><option value="absolute">Absolute</option><option value="fixed">Fixed</option><option value="sticky">Sticky</option></select></div>
+              <div class="css-field css-field-row"><div><label>Width</label><input type="text" data-css-prop="width" placeholder="auto"></div><div><label>Height</label><input type="text" data-css-prop="height" placeholder="auto"></div></div>
+            </div>
+            <div class="css-section">
+              <div class="css-section-title">Effects</div>
+              <div class="css-field css-field-row"><div><label>Opacity</label><input type="number" data-css-prop="opacity" min="0" max="1" step="0.05" placeholder="1"></div><div><label>Shadow</label><input type="text" data-css-prop="box-shadow" placeholder="none"></div></div>
+            </div>
           </div>
         </div>
       </aside>

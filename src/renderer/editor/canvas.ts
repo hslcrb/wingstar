@@ -14,6 +14,7 @@ export class CanvasManager {
   private onElementSelectedCallback: ((el: HTMLElement | null) => void) | null = null;
   private onCanvasChangedCallback: ((html: string) => void) | null = null;
   private onContextMenuCallback: ((e: MouseEvent, el: HTMLElement | null) => void) | null = null;
+  private onAssetDropCallback: ((assetUrl: string, targetEl: HTMLElement | null) => void) | null = null;
 
   // Bound event handlers stored for removal in live mode
   private boundClickHandler: ((e: MouseEvent) => void) | null = null;
@@ -107,6 +108,10 @@ export class CanvasManager {
 
   public onContextMenu(callback: (e: MouseEvent, el: HTMLElement | null) => void) {
     this.onContextMenuCallback = callback;
+  }
+
+  public onAssetDrop(callback: (assetUrl: string, targetEl: HTMLElement | null) => void) {
+    this.onAssetDropCallback = callback;
   }
 
   public setDrawMode(mode: DrawMode) {
@@ -240,6 +245,14 @@ export class CanvasManager {
       e.preventDefault();
       const target = e.target as HTMLElement;
       if (target) target.style.outline = '';
+
+      const assetUrl = e.dataTransfer?.getData('text/asset-url');
+      if (assetUrl) {
+        if (this.onAssetDropCallback) {
+          this.onAssetDropCallback(assetUrl, target);
+        }
+        return;
+      }
 
       const componentType = e.dataTransfer?.getData('text/plain');
       if (!componentType || !componentTemplates[componentType]) return;
