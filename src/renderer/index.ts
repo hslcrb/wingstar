@@ -47,16 +47,22 @@ document.addEventListener('DOMContentLoaded', () => {
   // ─────────────────────────────────────────────
   // 3. Initialize Code Editor and Load Default Template
   // ─────────────────────────────────────────────
+  function dismissSplash() {
+    const splash = document.getElementById('splash-screen');
+    if (splash) splash.classList.add('fade-out');
+  }
+
   codeEditorManager.init(defaultHTML, () => {
-    // Once Monaco Editor is ready, load content into canvas and dismiss splash
     canvasManager.setContent(defaultHTML);
-    
-    setTimeout(() => {
-      const splash = document.getElementById('splash-screen');
-      if (splash) {
-        splash.classList.add('fade-out');
-      }
-    }, 1200);
+    setTimeout(dismissSplash, 1200);
+  }, () => {
+    // Monaco CDN fallback — show inline warning, hide splash anyway
+    const container = document.getElementById('monaco-editor-container');
+    if (container) {
+      container.innerHTML = '<div style="padding:20px;color:var(--text-muted);font-size:0.85rem;text-align:center"><p>⚠ Monaco Editor를 불러올 수 없습니다 (CDN 네트워크 필요).</p><p style="margin-top:8px;font-size:0.75rem">코드 편집기는 비활성화되며, 캔버스 편집은 정상 동작합니다.</p></div>';
+    }
+    canvasManager.setContent(defaultHTML);
+    setTimeout(dismissSplash, 500);
   });
 
   // ─────────────────────────────────────────────

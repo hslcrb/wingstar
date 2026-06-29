@@ -11,12 +11,21 @@ export class CodeEditorManager {
   /**
    * Initializes the Monaco editor using the globally loaded AMD loader.
    */
-  public init(initialCode: string, onReady: () => void) {
+  public init(initialCode: string, onReady: () => void, onError?: () => void) {
     // @ts-ignore
     const amdRequire = window.require;
+
+    let fallbackTimer: ReturnType<typeof setTimeout> | null = null;
+    if (onError) {
+      fallbackTimer = setTimeout(() => {
+        console.warn('[CodeEditor] Monaco did not load within timeout, triggering fallback');
+        if (onError) onError();
+      }, 4000);
+    }
     
     if (!amdRequire) {
       console.error('Monaco loader was not found in the window context.');
+      if (onError) onError();
       return;
     }
 
@@ -25,6 +34,7 @@ export class CodeEditorManager {
     });
 
     amdRequire(['vs/editor/editor.main'], () => {
+      if (fallbackTimer) clearTimeout(fallbackTimer);
       // @ts-ignore
       this.editor = window.monaco.editor.create(this.container, {
         value: initialCode,

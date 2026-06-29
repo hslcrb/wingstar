@@ -45,34 +45,45 @@ export function initAssets() {
   assets = loadAssets();
   renderAssetGrid();
 
-  document.getElementById('btn-import-image')?.addEventListener('click', async () => {
-    try {
-      const result = await (window as any).electronAPI.openImage();
-      if (result && result.length > 0) {
-        addAssets(result);
+  const importBtn = document.getElementById('btn-import-image');
+  if (importBtn) {
+    importBtn.addEventListener('click', async () => {
+      try {
+        const api = (window as any).electronAPI;
+        if (!api || !api.openImage) {
+          console.warn('[Assets] electronAPI.openImage not available');
+          return;
+        }
+        const result = await api.openImage();
+        if (result && result.length > 0) {
+          addAssets(result);
+        }
+      } catch (err: any) {
+        console.error('Image import failed:', err);
       }
-    } catch (err: any) {
-      console.error('Image import failed:', err);
-    }
-  });
+    });
+  }
 
-  const dropZone = document.getElementById('assets-grid') as HTMLElement;
+  const dropZone = document.getElementById('assets-grid');
   if (dropZone) {
-    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--primary)'; });
-    dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = ''; });
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); (dropZone as HTMLElement).style.borderColor = 'var(--primary)'; });
+    dropZone.addEventListener('dragleave', () => { (dropZone as HTMLElement).style.borderColor = ''; });
     dropZone.addEventListener('drop', (e) => {
       e.preventDefault();
-      dropZone.style.borderColor = '';
+      (dropZone as HTMLElement).style.borderColor = '';
       const files = e.dataTransfer?.files;
       if (!files || files.length === 0) return;
       const newAssets: { name: string; dataUrl: string; type: string }[] = [];
+      let pending = 0;
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         if (!file.type.startsWith('image/')) continue;
+        pending++;
         const reader = new FileReader();
         reader.onload = () => {
           newAssets.push({ name: file.name, dataUrl: reader.result as string, type: file.type });
-          if (i === files.length - 1) addAssets(newAssets);
+          pending--;
+          if (pending === 0) addAssets(newAssets);
         };
         reader.readAsDataURL(file);
       }
@@ -81,8 +92,8 @@ export function initAssets() {
 }
 
 function renderAssetGrid() {
-  const grid = document.getElementById('assets-grid') as HTMLElement;
-  const count = document.getElementById('asset-count') as HTMLElement;
+  const grid = document.getElementById('assets-grid');
+  const count = document.getElementById('asset-count');
   if (!grid) return;
   if (count) count.textContent = String(assets.length);
 

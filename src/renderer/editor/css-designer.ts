@@ -5,11 +5,16 @@ export class CssDesigner {
 
   constructor(containerId: string) {
     this.panel = document.getElementById(containerId) as HTMLElement;
+    if (!this.panel) {
+      console.warn(`[CssDesigner] Element #${containerId} not found`);
+      return;
+    }
     this.setup();
   }
 
   bind(el: HTMLElement | null) {
     this.selectedElement = el;
+    if (!this.panel) return;
     if (!el) { this.panel.classList.add('hidden'); return; }
     this.panel.classList.remove('hidden');
     this.refresh();
@@ -18,6 +23,7 @@ export class CssDesigner {
   onStyleChanged(cb: () => void) { this.onChanged = cb; }
 
   private setup() {
+    if (!this.panel) return;
     this.panel.addEventListener('input', (e) => {
       if (!this.selectedElement) return;
       const target = e.target as HTMLElement;
